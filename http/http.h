@@ -1,21 +1,21 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
-#pragma once
+
 #include <sys/epoll.h>
 #include <unistd.h>
+
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include "Timer.h"
+
+#include "timer/timer.h"
 
 class EventLoop;
 class TimerNode;
 class Channel;
 
 enum ProcessState {
-    STATE_PARSE_URI = 1,
+    STATE_PARSE_URI,
     STATE_PARSE_HEADERS,
     STATE_RECV_BODY,
     STATE_ANALYSIS,
@@ -23,21 +23,24 @@ enum ProcessState {
 };
 
 enum URIState {
-    PARSE_URI_AGAIN = 1,
+    PARSE_URI_AGAIN,
     PARSE_URI_ERROR,
     PARSE_URI_SUCCESS,
 };
 
 enum HeaderState {
-    PARSE_HEADER_SUCCESS = 1,
+    PARSE_HEADER_SUCCESS,
     PARSE_HEADER_AGAIN,
     PARSE_HEADER_ERROR
 };
 
-enum AnalysisState { ANALYSIS_SUCCESS = 1, ANALYSIS_ERROR };
+enum AnalysisState { 
+    ANALYSIS_SUCCESS,
+    ANALYSIS_ERROR 
+};
 
 enum ParseState {
-    H_START = 0,
+    H_START,
     H_KEY,
     H_COLON,
     H_SPACES_AFTER_COLON,
@@ -48,11 +51,22 @@ enum ParseState {
     H_END_LF
 };
 
-enum ConnectionState { H_CONNECTED = 0, H_DISCONNECTING, H_DISCONNECTED };
+enum ConnectionState { 
+    H_CONNECTED, 
+    H_DISCONNECTING, 
+    H_DISCONNECTED 
+};
 
-enum HttpMethod { METHOD_POST = 1, METHOD_GET, METHOD_HEAD };
+enum HttpMethod { 
+    METHOD_POST, 
+    METHOD_GET, 
+    METHOD_HEAD 
+};
 
-enum HttpVersion { HTTP_10 = 1, HTTP_11 };
+enum HttpVersion { 
+    HTTP_10, 
+    HTTP_11 
+};
 
 class MimeType {
  private:

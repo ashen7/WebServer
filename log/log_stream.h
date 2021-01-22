@@ -1,5 +1,6 @@
+#ifndef LOG_STREAM_H_
+#define LOG_STREAM_H_
 
-#pragma once
 #include <assert.h>
 #include <string.h>
 #include <string>
@@ -9,7 +10,7 @@ const int kSmallBuffer = 4000;
 const int kLargeBuffer = 4000 * 1000;
 
 template <int SIZE>
-class FixedBuffer : noncopyable {
+class FixedBuffer : NonCopyAble {
  public:
     FixedBuffer() : cur_(data_) {}
 
@@ -55,7 +56,7 @@ class FixedBuffer : noncopyable {
     char* cur_;
 };
 
-class LogStream : noncopyable {
+class LogStream : NonCopyAble {
  public:
     typedef FixedBuffer<kSmallBuffer> Buffer;
 
@@ -124,3 +125,5 @@ class LogStream : noncopyable {
 
     static const int kMaxNumericSize = 32;
 };
+
+#endif

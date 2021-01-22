@@ -1,11 +1,9 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
-#include "AsyncLogging.h"
-#include <assert.h>
+#include "async_logging.h"
+
 #include <stdio.h>
+#include <assert.h>
 #include <unistd.h>
 #include <functional>
-#include "LogFile.h"
 
 AsyncLogging::AsyncLogging(std::string logFileName_, int flushInterval)
     : flushInterval_(flushInterval),
@@ -25,7 +23,7 @@ AsyncLogging::AsyncLogging(std::string logFileName_, int flushInterval)
 }
 
 void AsyncLogging::append(const char* logline, int len) {
-    MutexLockGuard lock(mutex_);
+    LockGuard lock(mutex_);
     if (currentBuffer_->avail() > len)
         currentBuffer_->append(logline, len);
     else {
@@ -56,7 +54,7 @@ void AsyncLogging::threadFunc() {
         assert(buffersToWrite.empty());
 
         {
-            MutexLockGuard lock(mutex_);
+            LockGuard lock(mutex_);
             if (buffers_.empty())  // unusual usage!
             {
                 cond_.waitForSeconds(flushInterval_);

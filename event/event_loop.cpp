@@ -1,11 +1,13 @@
-#include "EventLoop.h"
+#include "event_loop.h"
+
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <iostream>
-#include "Util.h"
-#include "base/Logging.h"
 
-__thread EventLoop* t_loopInThisThread = 0;
+#include "utility/utils.h"
+#include "log/logging.h"
+
+__thread EventLoop* tls_loop_in_this_thread = 0;
 
 int createEventfd() {
     int evtfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -17,76 +19,75 @@ int createEventfd() {
 }
 
 EventLoop::EventLoop()
-    : looping_(false),
-      poller_(new Epoll()),
-      wakeupFd_(createEventfd()),
-      quit_(false),
+    : looping_(false), quit_(false), 
       eventHandling_(false),
-      callingPendingFunctors_(false),
-      threadId_(CurrentThread::tid()),
-      pwakeupChannel_(new Channel(this, wakeupFd_)) {
-    if (t_loopInThisThread) {
-        // LOG << "Another EventLoop " << t_loopInThisThread << " exists in this
+      callingPendingFunctors_(false) {
+    poller_ = new Epoll();
+    wakeupfd_ = createEventfd();
+    threadId_ = CurrentThread::tid();
+    wakeup_channel_ = new Channel(this, wakeupfd_);
+    if (tls_loop_in_this_thread) {
+        // LOG << "Another EventLoop " << tls_loop_in_this_thread << " exists in this
         // thread " << threadId_;
     } else {
-        t_loopInThisThread = this;
+        tls_loop_in_this_thread = this;
     }
-    // pwakeupChannel_->setEvents(EPOLLIN | EPOLLET | EPOLLONESHOT);
-    pwakeupChannel_->setEvents(EPOLLIN | EPOLLET);
-    pwakeupChannel_->setReadHandler(bind(&EventLoop::handleRead, this));
-    pwakeupChannel_->setConnHandler(bind(&EventLoop::handleConn, this));
-    poller_->epoll_add(pwakeupChannel_, 0);
+    // wakeup_channel_->set_events(EPOLLIN | EPOLLET | EPOLLONESHOT);
+    wakeup_channel_->set_events(EPOLLIN | EPOLLET);
+    wakeup_channel_->set_read_handler(bind(&EventLoop::HandleRead, this));
+    wakeup_channel_->set_connect_handler(bind(&EventLoop::HandleConnect, this));
+    poller_->epoll_add(wakeup_channel_, 0);
 }
 
-void EventLoop::handleConn() {
-    // poller_->epoll_mod(wakeupFd_, pwakeupChannel_, (EPOLLIN | EPOLLET |
+void EventLoop::HandleConnect() {
+    // poller_->epoll_mod(wakeupfd_, wakeup_channel_, (EPOLLIN | EPOLLET |
     // EPOLLONESHOT), 0);
-    updatePoller(pwakeupChannel_, 0);
+    updatePoller(wakeup_channel_, 0);
 }
 
 EventLoop::~EventLoop() {
     // wakeupChannel_->disableAll();
     // wakeupChannel_->remove();
-    close(wakeupFd_);
-    t_loopInThisThread = NULL;
+    close(wakeupfd_);
+    tls_loop_in_this_thread = NULL;
 }
 
-void EventLoop::wakeup() {
+void EventLoop::WakeUp() {
     uint64_t one = 1;
-    ssize_t n = writen(wakeupFd_, (char*)(&one), sizeof one);
+    ssize_t n = writen(wakeupfd_, (char*)(&one), sizeof one);
     if (n != sizeof one) {
-        LOG << "EventLoop::wakeup() writes " << n << " bytes instead of 8";
+        LOG << "EventLoop::WakeUp() writes " << n << " bytes instead of 8";
     }
 }
 
-void EventLoop::handleRead() {
+void EventLoop::HandleRead() {
     uint64_t one = 1;
-    ssize_t n = readn(wakeupFd_, &one, sizeof one);
+    ssize_t n = readn(wakeupfd_, &one, sizeof one);
     if (n != sizeof one) {
-        LOG << "EventLoop::handleRead() reads " << n << " bytes instead of 8";
+        LOG << "EventLoop::HandleRead() reads " << n << " bytes instead of 8";
     }
-    // pwakeupChannel_->setEvents(EPOLLIN | EPOLLET | EPOLLONESHOT);
-    pwakeupChannel_->setEvents(EPOLLIN | EPOLLET);
+    // wakeup_channel_->set_events(EPOLLIN | EPOLLET | EPOLLONESHOT);
+    wakeup_channel_->set_events(EPOLLIN | EPOLLET);
 }
 
 void EventLoop::runInLoop(Functor&& cb) {
     if (isInLoopThread())
         cb();
     else
-        queueInLoop(std::move(cb));
+        QueueInLoop(std::move(cb));
 }
 
-void EventLoop::queueInLoop(Functor&& cb) {
+void EventLoop::QueueInLoop(Functor&& cb) {
     {
         MutexLockGuard lock(mutex_);
         pendingFunctors_.emplace_back(std::move(cb));
     }
 
     if (!isInLoopThread() || callingPendingFunctors_)
-        wakeup();
+        WakeUp();
 }
 
-void EventLoop::loop() {
+void EventLoop::Loop() {
     assert(!looping_);
     assert(isInLoopThread());
     looping_ = true;
@@ -101,13 +102,13 @@ void EventLoop::loop() {
         for (auto& it : ret)
             it->handleEvents();
         eventHandling_ = false;
-        doPendingFunctors();
+        DoPendingFunctors();
         poller_->handleExpired();
     }
     looping_ = false;
 }
 
-void EventLoop::doPendingFunctors() {
+void EventLoop::DoPendingFunctors() {
     std::vector<Functor> functors;
     callingPendingFunctors_ = true;
 
@@ -121,9 +122,9 @@ void EventLoop::doPendingFunctors() {
     callingPendingFunctors_ = false;
 }
 
-void EventLoop::quit() {
+void EventLoop::Quit() {
     quit_ = true;
     if (!isInLoopThread()) {
-        wakeup();
+        WakeUp();
     }
 }

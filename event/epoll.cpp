@@ -11,25 +11,25 @@
 #include <iostream>
 #include <queue>
 
-#include "base/logging.h"
-#include "util.h"
+#include "log/logging.h"
+#include "utility/utils.h"
 
 const int EVENTSNUM = 4096;
 const int EPOLLWAIT_TIME = 10000;
 
 Epoll::Epoll() 
-    : epollFd_(epoll_create1(EPOLL_CLOEXEC)), 
+    : epollfd_(epoll_create1(EPOLL_CLOEXEC)), 
       events_(EVENTSNUM) {
-    assert(epollFd_ > 0);
+    assert(epollfd_ > 0);
 }
 
 Epoll::~Epoll() {}
 
 // 注册新描述符
-void Epoll::epoll_add(std::shared_ptr<Channel> request, int timeout) {
+void Epoll::AddEpoll(std::shared_ptr<Channel> request, int timeout) {
     int fd = request->get_fd();
     if (timeout > 0) {
-        add_timer(request, timeout);
+        AddTimer(request, timeout);
         fd2http_[fd] = request->getHolder();
     }
     struct epoll_event event;
@@ -39,16 +39,16 @@ void Epoll::epoll_add(std::shared_ptr<Channel> request, int timeout) {
     request->EqualAndUpdateLastEvents();
 
     fd2chan_[fd] = request;
-    if (epoll_ctl(epollFd_, EPOLL_CTL_ADD, fd, &event) < 0) {
-        perror("epoll_add error");
+    if (epoll_ctl(epollfd_, EPOLL_CTL_ADD, fd, &event) < 0) {
+        perror("AddEpoll error");
         fd2chan_[fd].reset();
     }
 }
 
 // 修改描述符状态
-void Epoll::epoll_mod(std::shared_ptr<Channel> request, int timeout) {
+void Epoll::ModEpoll(std::shared_ptr<Channel> request, int timeout) {
     if (timeout > 0) {
-        add_timer(request, timeout);
+        AddTimer(request, timeout);
     }
 
     int fd = request->get_fd();
@@ -56,23 +56,23 @@ void Epoll::epoll_mod(std::shared_ptr<Channel> request, int timeout) {
         struct epoll_event event;
         event.data.fd = fd;
         event.events = request->get_events();
-        if (epoll_ctl(epollFd_, EPOLL_CTL_MOD, fd, &event) < 0) {
-            perror("epoll_mod error");
+        if (epoll_ctl(epollfd_, EPOLL_CTL_MOD, fd, &event) < 0) {
+            perror("ModEpoll error");
             fd2chan_[fd].reset();
         }
     }
 }
 
 // 从epoll中删除描述符
-void Epoll::epoll_del(std::shared_ptr<Channel> request) {
+void Epoll::DelEpoll(std::shared_ptr<Channel> request) {
     int fd = request->get_fd();
     struct epoll_event event;
     event.data.fd = fd;
     event.events = request->getLastEvents();
     // event.events = 0;
     // request->EqualAndUpdateLastEvents()
-    if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, &event) < 0) {
-        perror("epoll_del error");
+    if (epoll_ctl(epollfd_, EPOLL_CTL_DEL, fd, &event) < 0) {
+        perror("DelEpoll error");
     }
     fd2chan_[fd].reset();
     fd2http_[fd].reset();
@@ -81,20 +81,20 @@ void Epoll::epoll_del(std::shared_ptr<Channel> request) {
 // 返回活跃事件数
 std::vector<std::shared_ptr<Channel>> Epoll::Poll() {
     while (true) {
-        int event_count = epoll_wait(epollFd_, &*events_.begin(),
+        int event_num = epoll_wait(epollfd_, &*events_.begin(),
                                      events_.size(), EPOLLWAIT_TIME);
-        if (event_count < 0) {
+        if (event_num < 0) {
             perror("epoll wait error");
         }
         
-        std::vector<std::shared_ptr<Channel>> req_data = getEventsRequest(event_count);
+        std::vector<std::shared_ptr<Channel>> req_data = getEventsRequest(event_num);
         if (req_data.size() > 0) {
             return req_data;
         }
     }
 }
 
-void Epoll::handleExpired() {
+void Epoll::HandleExpired() {
     timerManager_.handleExpiredEvent();
 }
 
@@ -121,7 +121,7 @@ std::vector<std::shared_ptr<Channel>> Epoll::GetEventsRequest(int events_num) {
     return req_data;
 }
 
-void Epoll::add_timer(std::shared_ptr<Channel> request_data, int timeout) {
+void Epoll::AddTimer(std::shared_ptr<Channel> request_data, int timeout) {
     shared_ptr<HttpData> t = request_data->getHolder();
     if (t) {
         timerManager_.addTimer(t, timeout);

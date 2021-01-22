@@ -1,3 +1,6 @@
+#ifndef CHANNEL_H_
+#define CHANNEL_H_
+
 #include <sys/epoll.h>
 
 #include <functional>
@@ -5,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "timer.h"
+#include "timer/timer.h"
 
 class EventLoop;
 class HttpData;
@@ -76,7 +79,7 @@ class Channel {
 
     //IO事件的回调函数
     void HandleEvents();
-    void handleConn();
+    void handleConnect();
     void handleRead();
     void handleWrite();
     void handleError(int fd, int err_num, std::string short_msg);
@@ -96,8 +99,10 @@ class Channel {
     // 方便找到上层持有该Channel的对象
     std::weak_ptr<HttpData> holder_;
     
-    CallBack readHandler_;
-    CallBack writeHandler_;
-    CallBack errorHandler_;
-    CallBack connHandler_;
+    CallBack read_handler_;
+    CallBack write_handler_;
+    CallBack error_handler_;
+    CallBack connect_handler_;
 };
+
+#endif

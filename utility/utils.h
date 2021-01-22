@@ -19,7 +19,6 @@ void handle_for_sigpipe();
 //
 int InitListen(int port);
 
-
 //读n个字节
 int readn(int fd, void* buffer, int n);
 int readn(int fd, std::string& buffer, bool& zero);

@@ -1,39 +1,48 @@
+#ifndef LOGGING_H_
+#define LOGGING_H_
 
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
-#include "LogStream.h"
+
+#include "log_stream.h"
 
 class AsyncLogging;
 
-class Logger {
+class Logging {
  public:
-    Logger(const char* fileName, int line);
-    ~Logger();
+    Logging(const char* fileName, int line);
+    ~Logging();
+    
     LogStream& stream() {
         return impl_.stream_;
     }
 
-    static void setLogFileName(std::string fileName) {
-        logFileName_ = fileName;
+    static std::string get_log_filename() {
+        return log_filename_;
     }
-    static std::string getLogFileName() {
-        return logFileName_;
+
+    static void SetLogFileName(std::string filename) {
+        logFileName_ = fileName;
     }
 
  private:
     class Impl {
      public:
-        Impl(const char* fileName, int line);
+        Impl(const char* filename, int line);
         void formatTime();
 
         LogStream stream_;
         int line_;
         std::string basename_;
     };
+
+ private:
+    static std::string log_filename_;
     Impl impl_;
-    static std::string logFileName_;
 };
 
-#define LOG Logger(__FILE__, __LINE__).stream()
+#define LOG Logging(__FILE__, __LINE__).stream()
+
+#endif

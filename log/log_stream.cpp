@@ -1,9 +1,11 @@
 
-#include "LogStream.h"
+#include "log_stream.h"
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <algorithm>
 #include <limits>
 

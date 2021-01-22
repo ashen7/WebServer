@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "channel.h"
-#include "HttpData.h"
-#include "timer.h"
+#include "http/htpp.h"
+#include "timer/timer.h"
 
 class Epoll {
  public:
@@ -17,22 +17,23 @@ class Epoll {
     ~Epoll();
 
     int get_epollfd() {
-        return epollFd_;
+        return epollfd_;
     }
 
-    void epoll_add(std::shared_ptr<Channel> request, int timeout);
-    void epoll_mod(std::shared_ptr<Channel> request, int timeout);
-    void epoll_del(std::shared_ptr<Channel> request);
+    void AddEpoll(std::shared_ptr<Channel> request, int timeout);
+    void ModEpoll(std::shared_ptr<Channel> request, int timeout);
+    void DelEpoll(std::shared_ptr<Channel> request);
     
     std::vector<std::shared_ptr<Channel>> Poll();
     std::vector<std::shared_ptr<Channel>> GetEventsRequest(int events_num);
-    void add_timer(std::shared_ptr<Channel> request_data, int timeout);
+    void AddTimer(std::shared_ptr<Channel> request_data, int timeout);
 
-    void handleExpired();
+    void HandleExpired();
 
  private:
     static constexpr int MAXFDS = 100000;
-    int epollFd_;
+
+    int epollfd_;
     std::vector<epoll_event> events_;
     std::shared_ptr<Channel> fd2chan_[MAXFDS];
     std::shared_ptr<HttpData> fd2http_[MAXFDS];

@@ -1,14 +1,14 @@
 #include "channel.h"
 
 #include <unistd.h>
-#include <cstdlib>
-#include <iostream>
+#include <stdlib.h>
 
+#include <iostream>
 #include <queue>
 
 #include "epoll.h"
 #include "event_loop.h"
-#include "util.h"
+#include "utility/utils.h"
 
 Channel::Channel(EventLoop* loop)
     : loop_(loop), events_(0), lastEvents_(0), fd_(0) {}
@@ -34,28 +34,28 @@ void Channel::HandleEvents() {
         return;
     }
     if (revents_ & (EPOLLIN | EPOLLPRI | EPOLLRDHUP)) {
-        handleRead();
+        HandleRead();
     }
     if (revents_ & EPOLLOUT) {
-        handleWrite();
+        HandleWrite();
     }
-    handleConn();
+    HandleConnect();
 }
 
 void Channel::HandleRead() {
-    if (readHandler_) {
-        readHandler_();
+    if (read_handler_) {
+        read_handler_();
     }
 }
 
 void Channel::HandleWrite() {
-    if (writeHandler_) {
-        writeHandler_();
+    if (write_handler_) {
+        write_handler_();
     }
 }
 
 void Channel::HandleConn() {
-    if (connHandler_) {
-        connHandler_();
+    if (connect_handler_) {
+        connect_handler_();
     }
 }

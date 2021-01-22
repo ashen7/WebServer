@@ -1,31 +1,35 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
-#pragma once
-#include <memory>
-#include "Channel.h"
-#include "EventLoop.h"
-#include "EventLoopThreadPool.h"
+#ifndef WEB_SERVER_H_
+#define WEB_SERVER_H_
 
-class Server {
+#include "event/channel.h"
+#include "evnet/event_loop.h"
+
+class WebServer {
  public:
-    Server(EventLoop* loop, int threadNum, int port);
-    ~Server() {}
-    EventLoop* getLoop() const {
+    WebServer(EventLoop* loop, int threadNum, int port);
+    ~WebServer() {}
+  
+    EventLoop* get_loop() const {
         return loop_;
     }
-    void start();
-    void handNewConn();
-    void handThisConn() {
-        loop_->updatePoller(acceptChannel_);
+  
+    void Start();
+    
+    void HandleNewConnect();
+    void handelCurConnect() {
+        loop_->updatePoller(accept_channel_);
     }
 
  private:
-    EventLoop* loop_;
-    int threadNum_;
-    std::unique_ptr<EventLoopThreadPool> eventLoopThreadPool_;
-    bool started_;
-    std::shared_ptr<Channel> acceptChannel_;
-    int port_;
-    int listenFd_;
     static const int MAXFDS = 100000;
+
+    int port_;
+    int listenfd_;
+    int thread_num_;
+    EventLoop* loop_;
+    std::unique_ptr<EventLoopThreadPool> event_loop_thread_pool_;
+    bool started_;
+    std::shared_ptr<Channel> accept_channel_;
 };
+
+#endif
