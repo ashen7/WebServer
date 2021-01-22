@@ -40,6 +40,7 @@ class MutexLock : NonCopyAble {
     friend class ConditionVariable;
 };
 
+//互斥锁RAII
 class LockGuard : NonCopyAble {
  public:
     explicit LockGuard(Lock& mutex) 
@@ -55,6 +56,7 @@ class LockGuard : NonCopyAble {
     MutexLock& mutex_;
 };
 
+//条件变量
 class ConditionVariable : NonCopyAble {
  public:
     explicit ConditionVariable(MutexLock& mutex) 
@@ -90,8 +92,7 @@ class ConditionVariable : NonCopyAble {
     pthread_cond_t cond_;
 };
 
-// CountDownLatch的主要作用是确保Thread中传进去的func真的启动了以后
-// 外层的start才返回
+// CountDownLatch的主要作用是确保Thread中传进去的func真的启动了以后 外层的start才返回
 class CountDownLatch : NonCopyAble {
  public:
     explicit CountDownLatch(int count)

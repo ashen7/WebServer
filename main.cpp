@@ -1,10 +1,8 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
 #include <getopt.h>
-#include <string>
-#include "EventLoop.h"
-#include "Server.h"
-#include "base/Logging.h"
+
+#include "web_erver.h"
+#include "event/event_loop.h"
+#include "log/logging.h"
 
 int main(int argc, char* argv[]) {
     int threadNum = 4;
