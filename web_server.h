@@ -6,7 +6,7 @@
 
 class WebServer {
  public:
-    WebServer(EventLoop* loop, int threadNum, int port);
+    WebServer(EventLoop* loop, int thread_num, int port);
     ~WebServer() {}
   
     EventLoop* get_loop() const {
@@ -14,7 +14,7 @@ class WebServer {
     }
   
     void Start();
-    
+
     void HandleNewConnect();
     void handelCurConnect() {
         loop_->updatePoller(accept_channel_);

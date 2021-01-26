@@ -7,19 +7,21 @@
 #include "utility/utils.h"
 #include "log/logging.h"
 
-__thread EventLoop* tls_loop_in_this_thread = 0;
+__thread EventLoop* tls_loop_in_this_thread = NULL;
 
-int createEventfd() {
-    int evtfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (evtfd < 0) {
+int CreateEventfd() {
+    int event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (eventfd < 0) {
         LOG << "Failed in eventfd";
         abort();
     }
-    return evtfd;
+
+    return event_fd;
 }
 
 EventLoop::EventLoop()
-    : looping_(false), quit_(false), 
+    : looping_(false), 
+      quit_(false), 
       eventHandling_(false),
       callingPendingFunctors_(false) {
     poller_ = new Epoll();
@@ -70,21 +72,23 @@ void EventLoop::HandleRead() {
     wakeup_channel_->set_events(EPOLLIN | EPOLLET);
 }
 
-void EventLoop::runInLoop(Functor&& cb) {
-    if (isInLoopThread())
-        cb();
-    else
-        QueueInLoop(std::move(cb));
+void EventLoop::RunInLoop(Functor&& callback) {
+    if (isInLoopThread()) {
+        callback();
+    } else {
+        QueueInLoop(std::move(callback));
+    }
 }
 
-void EventLoop::QueueInLoop(Functor&& cb) {
+void EventLoop::QueueInLoop(Functor&& callback) {
     {
-        MutexLockGuard lock(mutex_);
-        pendingFunctors_.emplace_back(std::move(cb));
+        LockGuard lock(mutex_);
+        pendingFunctors_.emplace_back(std::move(callback));
     }
 
-    if (!isInLoopThread() || callingPendingFunctors_)
+    if (!isInLoopThread() || callingPendingFunctors_) {
         WakeUp();
+    }
 }
 
 void EventLoop::Loop() {
@@ -99,8 +103,9 @@ void EventLoop::Loop() {
         ret.clear();
         ret = poller_->poll();
         eventHandling_ = true;
-        for (auto& it : ret)
+        for (auto& it : ret) {
             it->handleEvents();
+        }
         eventHandling_ = false;
         DoPendingFunctors();
         poller_->handleExpired();
@@ -113,7 +118,7 @@ void EventLoop::DoPendingFunctors() {
     callingPendingFunctors_ = true;
 
     {
-        MutexLockGuard lock(mutex_);
+        LockGuard lock(mutex_);
         functors.swap(pendingFunctors_);
     }
 

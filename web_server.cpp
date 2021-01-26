@@ -9,8 +9,10 @@
 #include "log/logging.h"
 
 WebServer::WebServer(EventLoop* loop, int thread_num, int port)
-    : loop_(loop), thread_num_(thread_num),
-      port_(port), started_(false) {
+    : loop_(loop), 
+      port_(port), 
+      started_(false), 
+      thread_num_(thread_num) {
     event_loop_thread_pool_ = new EventLoopThreadPool(loop_, thread_num);
     accept_channel_ = new Channel(loop_);
     listenfd_ = SocketListen(port_); 

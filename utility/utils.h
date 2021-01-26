@@ -20,12 +20,12 @@ void handle_for_sigpipe();
 int InitListen(int port);
 
 //读n个字节
-int readn(int fd, void* buffer, int n);
-int readn(int fd, std::string& buffer, bool& zero);
-int readn(int fd, std::string& buffer);
+int Read(int fd, void* buffer, int n);
+int Read(int fd, std::string& buffer, bool& zero);
+int Read(int fd, std::string& buffer);
 
 //写n个字节
-int writen(int fd, void* buffer, int n);
-int writen(int fd, std::string& buffer);
+int Write(int fd, void* buffer, int n);
+int Write(int fd, std::string& buffer);
 
 #endif

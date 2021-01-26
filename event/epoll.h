@@ -31,7 +31,9 @@ class Epoll {
     void HandleExpired();
 
  private:
-    static constexpr int MAXFDS = 100000;
+    static constexpr int MAX_FD_NUM = 100000;     //最大fd数量
+    static constexpr int MAX_EVENTS_NUM = 10000;  //最大事件数量
+    static constexpr int EPOLLWAIT_TIME = 10000;  //epoll wait的超时时间
 
     int epollfd_;
     std::vector<epoll_event> events_;
