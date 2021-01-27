@@ -8,16 +8,24 @@
 
 #include "epoll.h"
 #include "event_loop.h"
-#include "utility/utils.h"
+#include "utility/socket_utils.h"
 
-Channel::Channel(EventLoop* loop)
-    : loop_(loop), events_(0), lastEvents_(0), fd_(0) {}
+Channel::Channel(EventLoop* event_loop)
+    : event_loop_(event_loop), 
+      fd_(0),
+      events_(0), 
+      last_events_(0) { 
+}
 
-Channel::Channel(EventLoop* loop, int fd)
-    : loop_(loop), fd_(fd), events_(0), lastEvents_(0) {}
+Channel::Channel(EventLoop* event_loop, int fd)
+    : event_loop_(event_loop), 
+      fd_(fd), 
+      events_(0), 
+      last_events_(0) {
+}
 
 Channel::~Channel() {
-    // loop_->poller_->epoll_del(fd, events_);
+    // event_loop_->poller_->epoll_del(fd, events_);
     // close(fd_);
 }
 
@@ -27,18 +35,22 @@ void Channel::HandleEvents() {
         events_ = 0;
         return;
     }
+    
     if (revents_ & EPOLLERR) {
-        if (errorHandler_)
-            errorHandler_();
+        if (error_handler_)
+            error_handler_();
         events_ = 0;
         return;
     }
+    
     if (revents_ & (EPOLLIN | EPOLLPRI | EPOLLRDHUP)) {
         HandleRead();
     }
+    
     if (revents_ & EPOLLOUT) {
         HandleWrite();
     }
+
     HandleConnect();
 }
 
@@ -54,7 +66,7 @@ void Channel::HandleWrite() {
     }
 }
 
-void Channel::HandleConn() {
+void Channel::HandleConnect() {
     if (connect_handler_) {
         connect_handler_();
     }

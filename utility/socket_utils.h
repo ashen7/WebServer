@@ -1,5 +1,5 @@
-#ifndef UTILS_H_
-#define UTILS_H_
+#ifndef SOCKET_UTILS_H_
+#define SOCKET_UTILS_H_
 
 #include <cstdlib>
 #include <string>
@@ -13,11 +13,11 @@ void SetSocketNoLinger(int fd);
 //关闭套接字
 void ShutDownWR(int fd);
 
-//
-void handle_for_sigpipe();
+//处理信号
+void HandlePipeSignal();
 
-//
-int InitListen(int port);
+//绑定地址并监听端口
+int SocketListen(int port);
 
 //读n个字节
 int Read(int fd, void* buffer, int n);

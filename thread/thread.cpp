@@ -11,109 +11,109 @@
 #include <iostream>
 #include <memory>
 
-#include "current_thread.h"
-
 namespace current_thread {
-
-__thread int tls_cached_tid = 0;
-__thread char tls_tid_string[32];
-__thread int tls_tid_length = 6;
+// TLS
+__thread int tls_thread_id = 0;
+__thread char tls_thread_id_str[32];
+__thread int tls_thread_id_str_len = 6;
 __thread const char* tls_thread_name = "default";
-
-}  // namespace current_thread
 
 pid_t get_tid() {
     return static_cast<pid_t>(::syscall(SYS_gettid));
 }
 
-void current_thread::cache_tid() {
-    if (tls_cached_tid == 0) {
-        tls_cached_tid = gettid();
-        tls_tid_length = snprintf(tls_tid_string, sizeof tls_tid_string, "%5d ", tls_cached_tid);
+void current_thread::cache_thread_id() {
+    if (tls_thread_id == 0) {
+        tls_thread_id = get_tid();
+        tls_thread_id_str_len = snprintf(tls_thread_id_str, sizeof(tls_thread_id_str), "%5d ", tls_thread_id);
     }
 }
 
-// 为了在线程中保留name,tid这些数据
+}  // namespace current_thread
+
+// 为了在线程中保留thread_name,thread_id这些数据
 struct ThreadData {
  public:
-    typedef Thread::ThreadFunc ThreadFunc;
+    typedef Thread::Worker Worker;
 
-    ThreadData(const ThreadFunc& func,
-               const string& name,
-               pid_t* tid,
-               CountDownLatch* latch)
-        : func_(func), name_(name), process_id_(tid), latch_(latch) {}
+    ThreadData(const Worker& worker,
+               const string& thread_name,
+               pid_t* thread_id,
+               CountDownLatch* count_down_latch)
+        : worker_(worker), 
+          thread_name_(thread_name), 
+          thread_id_(thread_id), 
+          count_down_latch_(count_down_latch) {
+    }
 
     void RunInThread() {
-        *process_id_ = current_thread::tid();
-        process_id_ = NULL;
-        latch_->count_down();
-        latch_ = NULL;
+        //给线程id和倒计时赋值
+        *thread_id_ = current_thread::thread_id();
+        thread_id_ = NULL;
+        count_down_latch_->count_down();
+        count_down_latch_ = NULL;
 
-        current_thread::tls_thread_name = name_.empty() ? "Thread" : name_.c_str();
+        current_thread::tls_thread_name = thread_name_.empty() ? "Thread" : thread_name_.c_str();
         prctl(PR_SET_NAME, current_thread::tls_thread_name);
 
-        func_();
+        //执行线程函数
+        worker_();
         current_thread::tls_thread_name = "finished";
     }
 
  public:
-    ThreadFunc func_;
-    string name_;
-    pid_t* process_id_;
-    CountDownLatch* latch_;
+    Worker worker_;
+    string thread_name_;
+    pid_t* thread_id_;
+    CountDownLatch* count_down_latch_;
 };
 
-void* StartThread(void* obj) {
-    ThreadData* thread_data = static_cast<ThreadData*>(obj);
+// Thread类
+Thread::Thread(const Worker& worker, const std::string& thread_name)
+    : worker_(worker),
+      thread_name_(thread_name), 
+      pthread_id_(0),
+      thread_id_(0),
+      is_start_(false),
+      is_join_(false),
+      count_down_latch_(1) {
+    if (thread_name_.empty()) {
+        thread_name_ = "Thread";
+    }
+}
+
+Thread::~Thread() {
+    if (is_start_ && !is_join_) {
+        pthread_detach(pthread_id_);
+    }
+}
+
+void Thread::Start() {
+    assert(!is_start_);
+    is_start_ = true;
+
+    ThreadData* thread_data = new ThreadData(worker_, thread_name_, &thread_id_, &count_down_latch_);
+    if (pthread_create(&pthread_id_, NULL, &Run, (void*)thread_data)) {
+        is_start_ = false;
+        delete thread_data;
+    } else {
+        count_down_latch_.wait();
+        assert(thread_id_ > 0);
+    }
+}
+
+int Thread::Join() {
+    assert(is_start_);
+    assert(!is_join_);
+    is_join_ = true;
+
+    return pthread_join(pthread_id_, NULL);
+}
+
+static void* Run(void* thread_obj) {
+    ThreadData* thread_data = static_cast<ThreadData*>(thread_obj);
     thread_data->RunInThread();
     delete thread_data;
 
     return NULL;
-}
-
-Thread::Thread(const ThreadFunc& func, const string& n)
-    : started_(false),
-      joined_(false),
-      thread_id_(0),
-      process_id_(0),
-      func_(func),
-      name_(n),
-      latch_(1) {
-    set_default_name();
-}
-
-Thread::~Thread() {
-    if (started_ && !joined_) {
-        pthread_detach(thread_id_);
-    }
-}
-
-void Thread::set_default_name() {
-    if (name_.empty()) {
-        char buf[32];
-        snprintf(buf, sizeof buf, "Thread");
-        name_ = buf;
-    }
-}
-
-void Thread::start() {
-    assert(!started_);
-    started_ = true;
-    ThreadData* data = new ThreadData(func_, name_, &process_id_, &latch_);
-    if (pthread_create(&thread_id_, NULL, &StartThread, data)) {
-        started_ = false;
-        delete data;
-    } else {
-        latch_.wait();
-        assert(process_id_ > 0);
-    }
-}
-
-int Thread::join() {
-    assert(started_);
-    assert(!joined_);
-    joined_ = true;
-
-    return pthread_join(thread_id_, NULL);
 }

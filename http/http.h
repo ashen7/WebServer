@@ -1,3 +1,5 @@
+#ifndef HTTP_H_
+#define HTTP_H_
 
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -131,3 +133,5 @@ class HttpData : public std::enable_shared_from_this<HttpData> {
     HeaderState parseHeaders();
     AnalysisState analysisRequest();
 };
+
+#endif

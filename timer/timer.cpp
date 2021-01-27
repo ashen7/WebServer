@@ -1,12 +1,18 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
-#include "Timer.h"
+#include "timer.h"
+
 #include <sys/time.h>
 #include <unistd.h>
+
 #include <queue>
 
+TimerNode::TimerNode(TimerNode& tn)
+    : SPHttpData(tn.SPHttpData), 
+      expiredTime_(0) {
+}
+
 TimerNode::TimerNode(std::shared_ptr<HttpData> requestData, int timeout)
-    : deleted_(false), SPHttpData(requestData) {
+    : SPHttpData(requestData),
+      deleted_(false) {
     struct timeval now;
     gettimeofday(&now, NULL);
     // 以毫秒计
@@ -15,12 +21,10 @@ TimerNode::TimerNode(std::shared_ptr<HttpData> requestData, int timeout)
 }
 
 TimerNode::~TimerNode() {
-    if (SPHttpData)
+    if (SPHttpData) {
         SPHttpData->handleClose();
+    }
 }
-
-TimerNode::TimerNode(TimerNode& tn)
-    : SPHttpData(tn.SPHttpData), expiredTime_(0) {}
 
 void TimerNode::update(int timeout) {
     struct timeval now;

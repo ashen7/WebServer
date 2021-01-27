@@ -5,20 +5,24 @@
 #include <sys/socket.h>
 #include <functional>
 
-#include "utility/utils.h"
+#include "utility/socket_utils.h"
 #include "log/logging.h"
 
-WebServer::WebServer(EventLoop* loop, int thread_num, int port)
-    : loop_(loop), 
+WebServer::WebServer(EventLoop* event_loop, int thread_num, int port)
+    : event_loop_(event_loop), 
+      thread_num_(thread_num),
       port_(port), 
-      started_(false), 
-      thread_num_(thread_num) {
-    event_loop_thread_pool_ = new EventLoopThreadPool(loop_, thread_num);
-    accept_channel_ = new Channel(loop_);
-    listenfd_ = SocketListen(port_); 
-    accept_channel_->set_fd(listenfd_);
+      started_(false) {
+    // new一个事件循环线程池 和用于接收的Channel
+    event_loop_thread_pool_ = new EventLoopThreadPool(event_loop_, thread_num);
+    accept_channel_ = new Channel(event_loop_);
+    
+    //绑定服务器ip和端口 监听端口
+    listen_fd_ = SocketListen(port_); 
+    accept_channel_->set_fd(listen_fd_);
     HandleSignalPipe();
-    if (SetSocketNonBlocking(listenfd_) < 0) {
+    //设置NIO非阻塞套接字
+    if (SetSocketNonBlocking(listen_fd_) < 0) {
         perror("set socket non block failed");
         abort();
     }
@@ -29,11 +33,11 @@ void WebServer::Start() {
     //开启event_loop线程池
     event_loop_thread_pool_->Start();
     //accept的管道
-    // accept_channel_->set_events(EPOLLIN | EPOLLET | EPOLLONESHOT);
     accept_channel_->set_events(EPOLLIN | EPOLLET);
     accept_channel_->set_read_handler(bind(&WebServer::HandleNewConnect, this));
-    accept_channel_->set_connect_handler(bind(&WebServer::handelCurConnect, this));
-    loop_->AddToPoller(accept_channel_, 0);
+    accept_channel_->set_connect_handler(bind(&WebServer::HandelCurConnect, this));
+    
+    event_loop_->AddToPoller(accept_channel_, 0);
     started_ = true;
 }
 
@@ -41,40 +45,41 @@ void WebServer::HandleNewConnect() {
     struct sockaddr_in client_addr;
     memset(&client_addr, 0, sizeof(struct sockaddr_in));
     socklen_t client_addr_len = sizeof(client_addr);
-    int accept_fd = 0;
-    while ((accept_fd = accept(listenfd_, (struct sockaddr*)&client_addr,
-                               &client_addr_len)) > 0) {
-        EventLoop* loop = event_loop_thread_pool_->getNextLoop();
-        LOG << "New connection from " << inet_ntoa(client_addr.sin_addr) << ":"
-            << ntohs(client_addr.sin_port);
-        // cout << "new connection" << endl;
-        // cout << inet_ntoa(client_addr.sin_addr) << endl;
-        // cout << ntohs(client_addr.sin_port) << endl;
-        /*
-        // TCP的保活机制默认是关闭的
-        int optval = 0;
-        socklen_t len_optval = 4;
-        getsockopt(accept_fd, SOL_SOCKET,  SO_KEEPALIVE, &optval, &len_optval);
-        cout << "optval ==" << optval << endl;
-        */
+
+    while (true) {
+        int connect_fd = accept(listen_fd_, (struct sockaddr*)&client_addr, &client_addr_len);
+        EventLoop* event_loop = event_loop_thread_pool_->getNextLoop();
+        LOG << "New connection from " << inet_ntoa(client_addr.sin_addr) 
+            << ":" << ntohs(client_addr.sin_port);
+        if (connect_fd < 0) {
+            LOG << "Accept failed!";
+            break;
+        }
         // 限制服务器的最大并发连接数
-        if (accept_fd >= MAXFDS) {
-            close(accept_fd);
-            continue;
+        if (connect_fd >= MAX_FD_NUM) {
+            LOG << "Internal server busy!";
+            close(connect_fd);
+            break;
         }
         // 设为非阻塞模式
-        if (SetSocketNonBlocking(accept_fd) < 0) {
-            LOG << "Set non block failed!";
-            // perror("Set non block failed!");
-            return;
+        if (SetSocketNonBlocking(connect_fd) < 0) {
+            LOG << "set socket nonblock failed!";
+            close(connect_fd);
+            break;
         }
+        //设置套接字
+        SetSocketNodelay(connect_fd);
+        // setSocketNoLinger(connect_fd);
 
-        SetSocketNodelay(accept_fd);
-        // setSocketNoLinger(accept_fd);
-
-        shared_ptr<HttpData> req_info(new HttpData(loop, accept_fd));
+        shared_ptr<HttpData> req_info(new HttpData(event_loop, connect_fd));
         req_info->getChannel()->setHolder(req_info);
-        loop->queueInLoop(std::bind(&HttpData::newEvent, req_info));
+        
+        event_loop->queueInLoop(std::bind(&HttpData::newEvent, req_info));
     }
+
     accept_channel_->set_events(EPOLLIN | EPOLLET);
+}
+
+void WebServer::handelCurConnect() {
+        event_loop_->UpdatePoller(accept_channel_);
 }

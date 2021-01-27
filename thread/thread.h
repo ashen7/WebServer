@@ -9,35 +9,34 @@
 #include <memory>
 #include <string>
 
-#include "utility/mutex_lock.h"
+#include "locker/mutex_lock.h"
 
 namespace current_thread {
-
 // __thread: TLS线程局部存储 每个当前线程都有一个该变量的实例
-extern __thread int tls_cached_tid;
-extern __thread char tls_tid_string[32];
-extern __thread int tls_tid_length;
+extern __thread int tls_thread_id;
+extern __thread char tls_thread_id_str[32];
+extern __thread int tls_thread_id_str_len;
 extern __thread const char* tls_thread_name;
 
-void cache_tid();
+void cache_thread_id();
 
-inline int tid() {
-    if (__builtin_expect(t_cachedTid == 0, 0)) {
-        cache_tid();
+inline int thread_id() {
+    if (__builtin_expect(tls_thread_id == 0, 0)) {
+        cache_thread_id();
     }
 
-    return tls_cached_tid;
+    return tls_thread_id;
 }
 
-inline const char* tid_string() {
-    return tls_tid_string;
+inline const char* thread_id_str() {
+    return tls_thread_id_str;
 }
 
-inline int tid_length() {
-    return tls_tid_string_len;
+inline int thread_id_str_len() {
+    return tls_thread_id_str_len;
 }
 
-inline const char* name() {
+inline const char* thread_name() {
     return tls_thread_name;
 }
 
@@ -45,37 +44,38 @@ inline const char* name() {
 
 class Thread {
  public:
-    typedef std::function<void()> ThreadFunc;
+    typedef std::function<void()> Worker;
 
-    explicit Thread(const ThreadFunc&, const std::string& name = std::string());
+    explicit Thread(const Worker&, const std::string& thread_name = "");
     ~Thread();
 
-    void start();
-    int join();
+    void Start();
+    int Join();
 
-    bool started() const {
-        return started_;
+    bool is_start() const {
+        return is_start_;
     }
 
-    pid_t tid() const {
-        return process_id_;
+    pid_t thread_id() const {
+        return thread_id_;
     }
 
-    const std::string& name() const {
-        return name_;
+    const std::string& thread_name() const {
+        return thread_name_;
     }
 
  private:
-    void set_default_name();
+    static void* Run(void* thread_obj);
 
  private:
-    bool started_;
-    bool joined_;
-    pthread_t thread_id_;
-    pid_t process_id_;
-    ThreadFunc func_;
-    std::string name_;
-    CountDownLatch latch_;
+    Worker worker_;
+    pthread_t pthread_id_;
+    pid_t thread_id_;
+    std::string thread_name_;
+    CountDownLatch count_down_latch_;
+
+    bool is_start_;
+    bool is_join_;
 };
 
 #endif

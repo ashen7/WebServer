@@ -1,8 +1,4 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
-
-// This file has not been used
-#include "ThreadPool.h"
+#include "thread_pool.h"
 
 pthread_mutex_t ThreadPool::lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t ThreadPool::notify = PTHREAD_COND_INITIALIZER;

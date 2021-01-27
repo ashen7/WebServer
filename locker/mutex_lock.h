@@ -43,7 +43,7 @@ class MutexLock : NonCopyAble {
 //互斥锁RAII
 class LockGuard : NonCopyAble {
  public:
-    explicit LockGuard(Lock& mutex) 
+    explicit LockGuard(MutexLock& mutex) 
         : mutex_(mutex) {
         mutex_.lock();
     }
@@ -96,9 +96,13 @@ class ConditionVariable : NonCopyAble {
 class CountDownLatch : NonCopyAble {
  public:
     explicit CountDownLatch(int count)
-        : mutex_(), condition_(mutex_), count_(count) {}
+        : mutex_(), 
+          condition_(mutex_), 
+          count_(count) {
+    }
     
-    ~CountDownLatch() {}
+    ~CountDownLatch() {
+    }
 
     void wait() {
         LockGuard lock(mutex_);

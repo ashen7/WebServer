@@ -1,13 +1,13 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
+#ifndef THREAD_POOL_H_
+#define THREAD_POOL_H_
 
-// This file has not been used
-#pragma once
 #include <pthread.h>
+
 #include <functional>
 #include <memory>
 #include <vector>
-#include "Channel.h"
+
+#include "event/channel.h"
 
 const int THREADPOOL_INVALID = -1;
 const int THREADPOOL_LOCK_FAILURE = -2;
@@ -51,3 +51,5 @@ class ThreadPool {
     static int threadpool_free();
     static void* threadpool_thread(void* args);
 };
+
+#endif

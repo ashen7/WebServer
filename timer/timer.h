@@ -1,6 +1,6 @@
-// @Author Lin Ya
-// @Email xxbbb@vip.qq.com
-#pragma once
+#ifndef TIMER_H_
+#define TIMER_H_
+
 #include <unistd.h>
 #include <deque>
 #include <memory>
@@ -38,7 +38,7 @@ class TimerNode {
 struct TimerCmp {
     bool operator()(std::shared_ptr<TimerNode>& a,
                     std::shared_ptr<TimerNode>& b) const {
-        return a->getExpTime() > b->getExpTime();
+        return a->get_exp_time() > b->get_exp_time();
     }
 };
 
@@ -55,3 +55,5 @@ class TimerManager {
         timerNodeQueue;
     // MutexLock lock;
 };
+
+#endif
