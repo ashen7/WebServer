@@ -11,7 +11,7 @@
 #include "timer/timer.h"
 
 class EventLoop;
-class HttpData;
+class Http;
 
 // Channel对应一个文件描述符fd
 // Channel封装了一系列该fd对应的操作 使用EventCallBack回调函数的手法
@@ -27,10 +27,10 @@ class Channel {
 
     //IO事件的回调函数 由Poller通过EventLoop调用
     void HandleEvents();      
-    void handleConnect();
-    void handleRead();
-    void handleWrite();
-    void handleError(int fd, int err_num, std::string short_msg);
+    void HandleConnect();
+    void HandleRead();
+    void HandleWrite();
+    void HandleError(int fd, int err_num, std::string short_msg);
 
     int get_fd() {
         return fd_;
@@ -40,12 +40,12 @@ class Channel {
         fd_ = fd;
     }
 
-    std::shared_ptr<HttpData> get_holder() {
-        std::shared_ptr<HttpData> ret(holder_.lock());
+    std::shared_ptr<Http> get_holder() {
+        std::shared_ptr<Http> ret(holder_.lock());
         return ret;
     }
 
-    void set_holder(std::shared_ptr<HttpData> holder) {
+    void set_holder(std::shared_ptr<Http> holder) {
         holder_ = holder;
     }
 
@@ -77,14 +77,14 @@ class Channel {
         events_ = ev;
     }
 
-    bool EqualAndUpdateLastEvents() {
+    int get_last_events() {
+        return last_events_;
+    }
+
+    bool update_last_events() {
         bool is_change = (last_events_ == events_);
         last_events_ = events_;
         return is_change;
-    }
-
-    int get_last_events() {
-        return last_events_;
     }
 
  private:
@@ -95,7 +95,7 @@ class Channel {
     int last_events_;
 
     // 方便找到上层持有该Channel的对象
-    std::weak_ptr<HttpData> holder_;
+    std::weak_ptr<Http> holder_;
     
     EventCallBack read_handler_;
     EventCallBack write_handler_;

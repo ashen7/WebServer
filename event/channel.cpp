@@ -54,6 +54,12 @@ void Channel::HandleEvents() {
     HandleConnect();
 }
 
+void Channel::HandleConnect() {
+    if (connect_handler_) {
+        connect_handler_();
+    }
+}
+
 void Channel::HandleRead() {
     if (read_handler_) {
         read_handler_();
@@ -66,8 +72,3 @@ void Channel::HandleWrite() {
     }
 }
 
-void Channel::HandleConnect() {
-    if (connect_handler_) {
-        connect_handler_();
-    }
-}

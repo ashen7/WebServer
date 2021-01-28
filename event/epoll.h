@@ -42,7 +42,7 @@ class Epoll {
     int epoll_fd_;
     std::vector<epoll_event> events_;
     std::shared_ptr<Channel> channel_[MAX_FD_NUM];
-    std::shared_ptr<HttpData> http_[MAX_FD_NUM];
+    std::shared_ptr<Http> http_[MAX_FD_NUM];
     TimerQueue timer_queue_;
 };
 

@@ -20,12 +20,12 @@ void HandlePipeSignal();
 int SocketListen(int port);
 
 //读n个字节
-int Read(int fd, void* buffer, int n);
-int Read(int fd, std::string& buffer, bool& zero);
-int Read(int fd, std::string& buffer);
+int Read(int fd, void* read_buffer, int n);
+int Read(int fd, std::string& read_buffer, bool& zero);
+int Read(int fd, std::string& read_buffer);
 
 //写n个字节
-int Write(int fd, void* buffer, int n);
-int Write(int fd, std::string& buffer);
+int Write(int fd, void* write_buffer, int n);
+int Write(int fd, std::string& write_buffer);
 
 #endif

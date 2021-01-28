@@ -98,126 +98,128 @@ int SocketListen(int port) {
     return listen_fd;
 }
 
-int Read(int fd, void* buffer, int n) {
-    int nleft = n;
-    int nread = 0;
-    int read_sum = 0;
-    char* ptr = (char*)buffer;
-    while (nleft > 0) {
-        if ((nread = read(fd, ptr, nleft)) < 0) {
-            if (errno == EINTR)
-                nread = 0;
-            else if (errno == EAGAIN) {
-                return read_sum;
+int Read(int fd, void* read_buffer, int size) {
+    int read_bytes = 0;
+    int read_sum_bytes = 0;
+    char* buffer = (char*)read_buffer;
+
+    while (size > 0) {
+        if ((read_bytes = read(fd, buffer, size)) < 0) {
+            //EINTR是中断引起的 所以重新读就行
+            if (errno == EINTR) {
+                read_bytes = 0;
+            } else if (errno == EAGAIN) {
+                return read_sum_bytes;
             } else {
                 return -1;
             }
-        } else if (nread == 0) {
+        } else if (read_bytes == 0) {
             break;
         }
 
-        read_sum += nread;
-        nleft -= nread;
-        ptr += nread;
+        read_sum_bytes += read_bytes;
+        size -= read_bytes;
+        buffer += read_bytes;
     }
 
-    return read_sum;
+    return read_sum_bytes;
 }
 
-int Read(int fd, std::string& buffer, bool& zero) {
-    int nread = 0;
-    int read_sum = 0;
+int Read(int fd, std::string& read_buffer, bool& is_zero) {
+    int read_bytes = 0;
+    int read_sum_bytes = 0;
+
     while (true) {
         char buffer[MAX_BUFFER_SIZE];
-        if ((nread = read(fd, buffer, MAX_BUFFER_SIZE)) < 0) {
-            if (errno == EINTR)
+        if ((read_bytes = read(fd, buffer, MAX_BUFFER_SIZE)) < 0) {
+            //EINTR是中断引起的 所以重新读就行
+            if (errno == EINTR) {
                 continue;
-            else if (errno == EAGAIN) {
-                return read_sum;
+            } else if (errno == EAGAIN) {
+                return read_sum_bytes;
             } else {
                 perror("read error");
                 return -1;
             }
-        } else if (nread == 0) {
-            // printf("redsum = %d\n", read_sum);
-            zero = true;
+        } else if (read_bytes == 0) {
+            is_zero = true;
             break;
         }
-        // printf("before buffer.size() = %d\n", buffer.size());
-        // printf("nread = %d\n", nread);
-        read_sum += nread;
-        // buffer += nread;
-        buffer += std::string(buffer, buffer + nread);
-        // printf("after buffer.size() = %d\n", buffer.size());
+        
+        read_sum_bytes += read_bytes;
+        read_buffer += std::string(read_buffer, read_buffer + read_bytes);
     }
 
-    return read_sum;
+    return read_sum_bytes;
 }
 
-int Read(int fd, std::string& buffer) {
-    int nread = 0;
-    int read_sum = 0;
+int Read(int fd, std::string& read_buffer) {
+    int read_bytes = 0;
+    int read_sum_bytes = 0;
+
     while (true) {
         char buffer[MAX_BUFFER_SIZE];
-        if ((nread = read(fd, buffer, MAX_BUFFER_SIZE)) < 0) {
-            if (errno == EINTR)
+        if ((read_bytes = read(fd, buffer, MAX_BUFFER_SIZE)) < 0) {
+            //EINTR是中断引起的 所以重新读就行
+            if (errno == EINTR) {
                 continue;
-            else if (errno == EAGAIN) {
-                return read_sum;
+            } else if (errno == EAGAIN) {
+                return read_sum_bytes;
             } else {
                 perror("read error");
                 return -1;
             }
-        } else if (nread == 0) {
-            // printf("redsum = %d\n", read_sum);
+        } else if (read_bytes == 0) {
             break;
         }
-        // printf("before buffer.size() = %d\n", buffer.size());
-        // printf("nread = %d\n", nread);
-        read_sum += nread;
-        // buffer += nread;
-        buffer += std::string(buffer, buffer + nread);
-        // printf("after buffer.size() = %d\n", buffer.size());
+
+        read_sum_bytes += read_bytes;
+        read_buffer += std::string(read_buffer, read_buffer + read_bytes);
     }
 
-    return read_sum;
+    return read_sum_bytes;
 }
 
-int Write(int fd, void* buffer, int n) {
-    int nleft = n;
-    int nwritten = 0;
-    int write_sum = 0;
-    char* ptr = (char*)buffer;
-    while (nleft > 0) {
-        if ((nwritten = write(fd, ptr, nleft)) <= 0) {
-            if (nwritten < 0) {
+int Write(int fd, void* write_buffer, int size) {
+    int write_bytes = 0;
+    int write_sum_bytes = 0;
+    char* buffer = (char*)write_buffer;
+
+    while (size > 0) {
+        if ((write_bytes = write(fd, buffer, size)) <= 0) {
+            if (write_bytes < 0) {
+               //EINTR是中断引起的 所以重新写就行
                 if (errno == EINTR) {
-                    nwritten = 0;
+                    write_bytes = 0;
                     continue;
                 } else if (errno == EAGAIN) {
-                    return write_sum;
-                } else
+                    return write_sum_bytes;
+                } else {
                     return -1;
+                }
             }
         }
-        write_sum += nwritten;
-        nleft -= nwritten;
-        ptr += nwritten;
+
+        write_sum_bytes += write_bytes;
+        size -= write_bytes;
+        buffer += write_bytes;
     }
 
-    return write_sum;
+    return write_sum_bytes;
 }
 
-int Write(int fd, std::string& buffer) {
-    int nleft = buffer.size();
-    int nwritten = 0;
-    int write_sum = 0;
-    const char* ptr = buffer.c_str();
-    while (nleft > 0) {
-        if ((nwritten = write(fd, ptr, nleft)) <= 0) {
-            if (nwritten < 0) {
+int Write(int fd, std::string& write_buffer) {
+    int size = write_buffer.size();
+    int write_bytes = 0;
+    int write_sum_bytes = 0;
+    const char* buffer = write_buffer.c_str();
+
+    while (size > 0) {
+        if ((write_bytes = write(fd, buffer, size)) <= 0) {
+            //EINTR是中断引起的 所以重新写就行
+            if (write_bytes < 0) {
                 if (errno == EINTR) {
-                    nwritten = 0;
+                    write_bytes = 0;
                     continue;
                 } else if (errno == EAGAIN) {
                     break;
@@ -226,16 +228,17 @@ int Write(int fd, std::string& buffer) {
                 }
             }
         }
-        write_sum += nwritten;
-        nleft -= nwritten;
-        ptr += nwritten;
+
+        write_sum_bytes += write_bytes;
+        size -= write_bytes;
+        buffer += write_bytes;
     }
 
-    if (write_sum == static_cast<int>(buffer.size())) {
-        buffer.clear();
+    if (write_sum_bytes == write_buffer.size()) {
+        write_buffer.clear();
     } else {
-        buffer = buffer.substr(write_sum);
+        write_buffer = write_buffer.substr(write_sum_bytes);
     }
 
-    return write_sum;
+    return write_sum_bytes;
 }

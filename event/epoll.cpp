@@ -114,7 +114,7 @@ void Epoll::EpollDel(std::shared_ptr<Channel> channel) {
 }
 
 void Epoll::AddTimer(std::shared_ptr<Channel> channel, int timeout) {
-    shared_ptr<HttpData> t = channel->get_holder();
+    shared_ptr<Http> t = channel->get_holder();
     if (t) {
         timer_queue_.AddTimer(t, timeout);
     } else {

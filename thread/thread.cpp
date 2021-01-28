@@ -74,8 +74,8 @@ Thread::Thread(const Worker& worker, const std::string& thread_name)
       thread_name_(thread_name), 
       pthread_id_(0),
       thread_id_(0),
-      is_start_(false),
-      is_join_(false),
+      is_started_(false),
+      is_joined_(false),
       count_down_latch_(1) {
     if (thread_name_.empty()) {
         thread_name_ = "Thread";
@@ -83,18 +83,18 @@ Thread::Thread(const Worker& worker, const std::string& thread_name)
 }
 
 Thread::~Thread() {
-    if (is_start_ && !is_join_) {
+    if (is_started_ && !is_joined_) {
         pthread_detach(pthread_id_);
     }
 }
 
 void Thread::Start() {
-    assert(!is_start_);
-    is_start_ = true;
+    assert(!is_started_);
+    is_started_ = true;
 
     ThreadData* thread_data = new ThreadData(worker_, thread_name_, &thread_id_, &count_down_latch_);
     if (pthread_create(&pthread_id_, NULL, &Run, (void*)thread_data)) {
-        is_start_ = false;
+        is_started_ = false;
         delete thread_data;
     } else {
         count_down_latch_.wait();
@@ -103,9 +103,9 @@ void Thread::Start() {
 }
 
 int Thread::Join() {
-    assert(is_start_);
-    assert(!is_join_);
-    is_join_ = true;
+    assert(is_started_);
+    assert(!is_joined_);
+    is_joined_ = true;
 
     return pthread_join(pthread_id_, NULL);
 }

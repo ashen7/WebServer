@@ -52,7 +52,7 @@ class Thread {
     void Start();
     int Join();
 
-    bool is_start() const {
+    bool is_started() const {
         return is_start_;
     }
 
@@ -74,8 +74,8 @@ class Thread {
     std::string thread_name_;
     CountDownLatch count_down_latch_;
 
-    bool is_start_;
-    bool is_join_;
+    bool is_started_;
+    bool is_joined_;
 };
 
 #endif

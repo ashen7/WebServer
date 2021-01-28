@@ -20,7 +20,7 @@ WebServer::WebServer(EventLoop* event_loop, int thread_num, int port)
     //绑定服务器ip和端口 监听端口
     listen_fd_ = SocketListen(port_); 
     accept_channel_->set_fd(listen_fd_);
-    HandleSignalPipe();
+    HandlePipeSignal();
     //设置NIO非阻塞套接字
     if (SetSocketNonBlocking(listen_fd_) < 0) {
         perror("set socket non block failed");
@@ -37,7 +37,7 @@ void WebServer::Start() {
     accept_channel_->set_read_handler(bind(&WebServer::HandleNewConnect, this));
     accept_channel_->set_connect_handler(bind(&WebServer::HandelCurConnect, this));
     
-    event_loop_->AddToPoller(accept_channel_, 0);
+    event_loop_->PollerAdd(accept_channel_, 0);
     started_ = true;
 }
 
@@ -71,15 +71,15 @@ void WebServer::HandleNewConnect() {
         SetSocketNodelay(connect_fd);
         // setSocketNoLinger(connect_fd);
 
-        shared_ptr<HttpData> req_info(new HttpData(event_loop, connect_fd));
-        req_info->getChannel()->setHolder(req_info);
+        shared_ptr<Http> req_info(new Http(event_loop, connect_fd));
+        req_info->get_channel()->set_holder(req_info);
         
-        event_loop->queueInLoop(std::bind(&HttpData::newEvent, req_info));
+        event_loop->QueueInLoop(std::bind(&Http::NewEvent, req_info));
     }
 
     accept_channel_->set_events(EPOLLIN | EPOLLET);
 }
 
-void WebServer::handelCurConnect() {
-        event_loop_->UpdatePoller(accept_channel_);
+void WebServer::HandelCurConnect() {
+        event_loop_->PollerMod(accept_channel_);
 }

@@ -2,58 +2,73 @@
 #define TIMER_H_
 
 #include <unistd.h>
-#include <deque>
+
 #include <memory>
+#include <deque>
 #include <queue>
-#include "HttpData.h"
-#include "base/MutexLock.h"
-#include "base/noncopyable.h"
+
+#include "http/http_data.h"
+#include "locker/MutexLock.h"
+#include "utility/noncopyable.h"
 
 class HttpData;
 
-class TimerNode {
+class Timer : {
  public:
-    TimerNode(std::shared_ptr<HttpData> requestData, int timeout);
-    ~TimerNode();
-    TimerNode(TimerNode& tn);
-    void update(int timeout);
-    bool isValid();
+    Timer(Timer& timer_node);
+    Timer(std::shared_ptr<HttpData> http_data, int timeout);
+    ~Timer();
+
+    void Update(int timeout);
     void clearReq();
-    void setDeleted() {
-        deleted_ = true;
+
+    bool is_expired() {
+        struct timeval now;
+        gettimeofday(&now, NULL);
+        size_t current_time = (((now.tv_sec % 10000) * 1000) + (now.tv_usec / 1000));
+        if (current_time >= expired_time_) {
+            is_deleted_ = true;
+            return true;
+        }
+        
+        return false;
     }
-    bool isDeleted() const {
-        return deleted_;
+
+    bool is_deleted() const {
+        return is_deleted_;
     }
-    size_t getExpTime() const {
-        return expiredTime_;
+    
+    int get_expire_time() const {
+        return expire_time_;
     }
 
  private:
-    bool deleted_;
-    size_t expiredTime_;
-    std::shared_ptr<HttpData> SPHttpData;
+    bool is_deleted_;
+    int expire_time_;
+    std::shared_ptr<HttpData> http_data_;
 };
 
-struct TimerCmp {
-    bool operator()(std::shared_ptr<TimerNode>& a,
-                    std::shared_ptr<TimerNode>& b) const {
-        return a->get_exp_time() > b->get_exp_time();
+struct TimerCompare {
+    bool operator()(std::shared_ptr<Timer>& a,
+                    std::shared_ptr<Timer>& b) const {
+        return a->get_expire_time() > b->get_expire_time();
     }
 };
 
-class TimerManager {
+class TimerQueue {
  public:
-    TimerManager();
-    ~TimerManager();
-    void addTimer(std::shared_ptr<HttpData> SPHttpData, int timeout);
-    void handleExpiredEvent();
+    TimerQueue();
+    ~TimerQueue();
+
+    //添加定时器 将其添加到小根堆中
+    void AddTimer(std::shared_ptr<HttpData> http_data, int timeout);
+    //处理超时事件 超时就从小根堆中删除
+    void HandleExpireEvent();
 
  private:
-    typedef std::shared_ptr<TimerNode> SPTimerNode;
-    std::priority_queue<SPTimerNode, std::deque<SPTimerNode>, TimerCmp>
-        timerNodeQueue;
-    // MutexLock lock;
+    std::priority_queue<std::shared_ptr<Timer>, 
+                        std::deque<std::shared_ptr<Timer>>, 
+                        TimerCompare> timer_queue_;
 };
 
 #endif

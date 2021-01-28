@@ -17,7 +17,7 @@ class WebServer {
 
     void HandleNewConnect();
 
-    void handelCurConnect();
+    void HandelCurConnect();
 
  private:
     static const int MAX_FD_NUM = 100000;
