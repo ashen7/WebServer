@@ -10,9 +10,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+namespace utility {
 //最大buffer size
 const int MAX_BUFFER_SIZE = 4096;
 
+//设置非阻塞套接字
 int SetSocketNonBlocking(int fd) {
     int old_flag = fcntl(fd, F_GETFL, 0);
     if (old_flag == -1) {
@@ -27,11 +29,13 @@ int SetSocketNonBlocking(int fd) {
     return 0;
 }
 
+//设置tcp算法nodelay
 void SetSocketNoDelay(int fd) {
     int enable = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void*)&enable, sizeof(enable));
 }
 
+//优雅关闭套接字
 void SetSocketNoLinger(int fd) {
     struct linger linger_struct;
     linger_struct.l_onoff = 1;
@@ -39,10 +43,12 @@ void SetSocketNoLinger(int fd) {
     setsockopt(fd, SOL_SOCKET, SO_LINGER, (const char*)&linger_struct, sizeof(linger_struct));
 }
 
+//关闭套接字
 void ShutDownWR(int fd) {
     shutdown(fd, SHUT_WR);
 }
 
+//处理管道信号
 void HandlePipeSignal() {
     struct sigaction signal_action;
     memset(&signal_action, '\0', sizeof(signal_action));
@@ -53,6 +59,7 @@ void HandlePipeSignal() {
     }
 }
 
+//服务器绑定地址并监听端口
 int SocketListen(int port) {
     // 检查port值，取正确区间范围
     if (port < 0 || port > 65535) {
@@ -98,6 +105,7 @@ int SocketListen(int port) {
     return listen_fd;
 }
 
+//从fd中读n个字节到buffer
 int Read(int fd, void* read_buffer, int size) {
     int read_bytes = 0;
     int read_sum_bytes = 0;
@@ -125,7 +133,8 @@ int Read(int fd, void* read_buffer, int size) {
     return read_sum_bytes;
 }
 
-int Read(int fd, std::string& read_buffer, bool& is_zero) {
+//从fd中读n个字节到buffer
+int Read(int fd, std::string& read_buffer, bool& is_read_zero_bytes) {
     int read_bytes = 0;
     int read_sum_bytes = 0;
 
@@ -142,7 +151,7 @@ int Read(int fd, std::string& read_buffer, bool& is_zero) {
                 return -1;
             }
         } else if (read_bytes == 0) {
-            is_zero = true;
+            is_read_zero_bytes = true;
             break;
         }
         
@@ -153,6 +162,7 @@ int Read(int fd, std::string& read_buffer, bool& is_zero) {
     return read_sum_bytes;
 }
 
+//从fd中读n个字节到buffer
 int Read(int fd, std::string& read_buffer) {
     int read_bytes = 0;
     int read_sum_bytes = 0;
@@ -180,6 +190,7 @@ int Read(int fd, std::string& read_buffer) {
     return read_sum_bytes;
 }
 
+//从buffer中写n个字节到fd
 int Write(int fd, void* write_buffer, int size) {
     int write_bytes = 0;
     int write_sum_bytes = 0;
@@ -208,6 +219,7 @@ int Write(int fd, void* write_buffer, int size) {
     return write_sum_bytes;
 }
 
+//从buffer中写n个字节到fd
 int Write(int fd, std::string& write_buffer) {
     int size = write_buffer.size();
     int write_bytes = 0;
@@ -242,3 +254,5 @@ int Write(int fd, std::string& write_buffer) {
 
     return write_sum_bytes;
 }
+
+}  // namespace utility

@@ -7,28 +7,21 @@
 #include "utility/socket_utils.h"
 #include "log/logging.h"
 
+namespace event {
 //线程局部变量 记录本线程持有的EventLoop的指针 
 //一个线程最多持有一个EventLoop 所以创建EventLoop时检查该指针是否为空
 __thread EventLoop* tls_event_loop = NULL;
-
-//类似管道的 线程间通信
-int CreateEventfd() {
-    int event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (eventfd < 0) {
-        LOG << "Failed in eventfd";
-        abort();
-    }
-
-    return event_fd;
-}
 
 EventLoop::EventLoop()
     : is_looping_(false), 
       is_quit_(false), 
       is_event_handling_(false),
       is_calling_pending_functors_(false) {
-    poller_ = new Epoll();
+    //创建poller io复用 
+    poller_ = std::make_shared<Poller>();
+    //创建进程间通信event_fd 
     event_fd_ = CreateEventfd();
+    //这个eventloop是属于这个线程id的
     thread_id_ = current_thread::thread_id();
     wakeup_channel_ = new Channel(this, event_fd_);
 
@@ -39,9 +32,11 @@ EventLoop::EventLoop()
         tls_event_loop = this;
     }
     
+    //给event_fd设置事件以及发生事件后调用的CallBack回调函数
     wakeup_channel_->set_events(EPOLLIN | EPOLLET);
-    wakeup_channel_->set_read_handler(bind(&EventLoop::HandleRead, this));
     wakeup_channel_->set_connect_handler(bind(&EventLoop::HandleConnect, this));
+    wakeup_channel_->set_read_handler(bind(&EventLoop::HandleRead, this));
+    //将event_fd注册到epoll内核事件表中
     poller_->EpollAdd(wakeup_channel_, 0);
 }
 
@@ -113,6 +108,14 @@ void EventLoop::RunPendingFunctors() {
     is_calling_pending_functors_ = false;
 }
 
+void EventLoop::WakeUp() {
+    uint64_t one = 1;
+    ssize_t n = writen(event_fd_, (char*)(&one), sizeof one);
+    if (n != sizeof one) {
+        LOG << "EventLoop::WakeUp() writes " << n << " bytes instead of 8";
+    }
+}
+
 void EventLoop::HandleConnect() {
     // poller_->EpollMod(event_fd_, wakeup_channel_, (EPOLLIN | EPOLLET |
     // EPOLLONESHOT), 0);
@@ -129,10 +132,17 @@ void EventLoop::HandleRead() {
     wakeup_channel_->set_events(EPOLLIN | EPOLLET);
 }
 
-void EventLoop::WakeUp() {
-    uint64_t one = 1;
-    ssize_t n = writen(event_fd_, (char*)(&one), sizeof one);
-    if (n != sizeof one) {
-        LOG << "EventLoop::WakeUp() writes " << n << " bytes instead of 8";
+
+//类似管道的 进程间通信
+static int CreateEventfd() {
+    //设置非阻塞套接字
+    int event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (eventfd < 0) {
+        LOG << "Failed in eventfd";
+        abort();
     }
+
+    return event_fd;
 }
+
+}  // namespace event

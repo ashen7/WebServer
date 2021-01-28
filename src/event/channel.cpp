@@ -6,9 +6,11 @@
 #include <iostream>
 #include <queue>
 
-#include "epoll.h"
+#include "poller.h"
 #include "event_loop.h"
 #include "utility/socket_utils.h"
+
+namespace event {
 
 Channel::Channel(EventLoop* event_loop)
     : event_loop_(event_loop), 
@@ -25,32 +27,34 @@ Channel::Channel(EventLoop* event_loop, int fd)
 }
 
 Channel::~Channel() {
-    // event_loop_->poller_->epoll_del(fd, events_);
+    // poller_->epoll_del(fd, events_);
     // close(fd_);
 }
 
 void Channel::HandleEvents() {
     events_ = 0;
+    //触发挂起事件 并且没触发可读事件
     if ((revents_ & EPOLLHUP) && !(revents_ & EPOLLIN)) {
         events_ = 0;
         return;
     }
     
+    //触发错误事件
     if (revents_ & EPOLLERR) {
-        if (error_handler_)
-            error_handler_();
+        HandleError();
         events_ = 0;
         return;
     }
     
+    //触发可读事件 | 高优先级可读 | 对端（客户端）关闭连接
     if (revents_ & (EPOLLIN | EPOLLPRI | EPOLLRDHUP)) {
         HandleRead();
     }
-    
+    //触发可写事件
     if (revents_ & EPOLLOUT) {
         HandleWrite();
     }
-
+    //处理连接事件
     HandleConnect();
 }
 
@@ -72,3 +76,10 @@ void Channel::HandleWrite() {
     }
 }
 
+void Channel::HandleError() {
+    if (error_handler_) {
+        error_handler_();
+    }
+}
+
+}  // namespace event

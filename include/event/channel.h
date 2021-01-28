@@ -1,5 +1,5 @@
-#ifndef CHANNEL_H_
-#define CHANNEL_H_
+#ifndef EVENT_CHANNEL_H_
+#define EVENT_CHANNEL_H_
 
 #include <sys/epoll.h>
 
@@ -11,11 +11,11 @@
 #include "timer/timer.h"
 
 class EventLoop;
-class Http;
+class http::Http;
 
-// Channel对应一个文件描述符fd
-// Channel封装了一系列该fd对应的操作 使用EventCallBack回调函数的手法
-// 包括可读 可写 关闭和错误处理4个回调函数
+namespace event {
+// Channel封装了一系列fd对应的操作 使用EventCallBack回调函数的手法
+// 包括处理读 处理写 处理错误 处理连接4个回调函数
 // fd一般是tcp连接connfd(套接字fd), 或者timerfd(定时器fd)，文件fd
 class Channel {
  public:
@@ -32,7 +32,7 @@ class Channel {
     void HandleWrite();
     void HandleError(int fd, int err_num, std::string short_msg);
 
-    int get_fd() {
+    int fd() const {
         return fd_;
     }
     
@@ -40,13 +40,17 @@ class Channel {
         fd_ = fd;
     }
 
-    std::shared_ptr<Http> get_holder() {
-        std::shared_ptr<Http> ret(holder_.lock());
-        return ret;
+    std::shared_ptr<http::Http> holder() {
+        std::shared_ptr<http::Http> holder(holder_.lock());
+        return holder;
     }
 
-    void set_holder(std::shared_ptr<Http> holder) {
+    void set_holder(std::shared_ptr<http::Http> holder) {
         holder_ = holder;
+    }
+
+    void set_connect_handler(EventCallBack&& connect_handler) {
+        connect_handler_ = connect_handler;
     }
 
     void set_read_handler(EventCallBack&& read_handler) {
@@ -61,23 +65,19 @@ class Channel {
         error_handler_ = error_handler;
     }
 
-    void set_connect_handler(EventCallBack&& connect_handler) {
-        connect_handler_ = connect_handler;
+    void set_revents(int revents) {
+        revents_ = revents;
     }
 
-    void set_revents(int ev) {
-        revents_ = ev;
-    }
-
-    int& get_events() {
+    int& events() {
         return events_;
     }
 
-    void set_events(int ev) {
-        events_ = ev;
+    void set_events(int events) {
+        events_ = events;
     }
 
-    int get_last_events() {
+    int last_events() const {
         return last_events_;
     }
 
@@ -89,18 +89,20 @@ class Channel {
 
  private:
     EventLoop* event_loop_;
-    int fd_;            //该Channel的fd
+    int fd_;            //Channel的fd
     int events_;        //Channel正在监听的事件
-    int revents_;       
-    int last_events_;
+    int revents_;       //返回的就绪事件
+    int last_events_;   //上一个事件
 
     // 方便找到上层持有该Channel的对象
-    std::weak_ptr<Http> holder_;
-    
+    std::weak_ptr<http::Http> holder_;
+
     EventCallBack read_handler_;
     EventCallBack write_handler_;
-    EventCallBack error_handler_;
     EventCallBack connect_handler_;
+    EventCallBack error_handler_;
 };
 
-#endif
+}  // namespace event
+
+#endif  // EVENT_CHANNEL_H_

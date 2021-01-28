@@ -1,5 +1,5 @@
-#ifndef EPOLL_H_
-#define EPOLL_H_ 
+#ifndef EVENT_POLLER_H_
+#define EVENT_POLLER_H_ 
 
 #include <sys/epoll.h>
 
@@ -9,16 +9,17 @@
 
 #include "channel.h"
 #include "http/http.h"
-#include "timer/timer.h"
+#include "timer/timer_heap.h"
 
-class Epoll {
+namespace event {
+//IO多路复用类
+class Poller {
  public:
-    Epoll();
-    ~Epoll();
+    Poller();
+    ~Poller();
     
     //分发
     std::vector<std::shared_ptr<Channel>> Poll();
-    std::vector<std::shared_ptr<Channel>> GetEventsRequest(int events_num);
 
     //注册 修改 删除epoll内核事件表
     void EpollAdd(std::shared_ptr<Channel> channel, int timeout);
@@ -39,11 +40,14 @@ class Epoll {
     static constexpr int MAX_EVENTS_NUM = 10000;  //最大事件数量
     static constexpr int EPOLL_TIMEOUT = 10000;   //epoll wait的超时时间
 
+ private:
     int epoll_fd_;
-    std::vector<epoll_event> events_;
-    std::shared_ptr<Channel> channel_[MAX_FD_NUM];
-    std::shared_ptr<Http> http_[MAX_FD_NUM];
-    TimerQueue timer_queue_;
+    std::vector<epoll_event>> event_array_;
+    std::vector<std::shared_ptr<Channel>> channel_array_;
+    std::vector<std::shared_ptr<http::Http>> http_array_;
+    timer::TimerHeap timer_heap_;
 };
 
-#endif
+}  // namespace event
+
+#endif  // EVENT_POLLER_H_

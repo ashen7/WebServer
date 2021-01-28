@@ -1,5 +1,5 @@
-#ifndef THREAD_H_
-#define THREAD_H_
+#ifndef THREAD_THREAD_H_
+#define THREAD_THREAD_H_
 
 #include <pthread.h>
 #include <sys/syscall.h>
@@ -10,16 +10,20 @@
 #include <string>
 
 #include "locker/mutex_lock.h"
+#include "utility/count_down_latch.h"
+#include "utility/noncopyable.h"
 
-namespace current_thread {
+namespace thread {
+namespace thread_local {
 // __thread: TLS线程局部存储 每个当前线程都有一个该变量的实例
-extern __thread int tls_thread_id;
-extern __thread char tls_thread_id_str[32];
-extern __thread int tls_thread_id_str_len;
-extern __thread const char* tls_thread_name;
+extern __thread int tls_thread_id;              //线程id
+extern __thread char tls_thread_id_str[32];     //线程id字符串
+extern __thread int tls_thread_id_str_len;      //线程id字符串长度
+extern __thread const char* tls_thread_name;    //线程名字
 
 void cache_thread_id();
 
+//得到线程id syscall 并赋值线程id字符串, 线程id字符串长度
 inline int thread_id() {
     if (__builtin_expect(tls_thread_id == 0, 0)) {
         cache_thread_id();
@@ -40,16 +44,18 @@ inline const char* thread_name() {
     return tls_thread_name;
 }
 
-}  // namespace current_thread
+}  // namespace thread_local
 
-class Thread {
+class Thread : utility::NonCopyAble {
  public:
     typedef std::function<void()> Worker;
-
+    
     explicit Thread(const Worker&, const std::string& thread_name = "");
     ~Thread();
 
+    //开始线程
     void Start();
+    //join线程
     int Join();
 
     bool is_started() const {
@@ -68,14 +74,16 @@ class Thread {
     static void* Run(void* thread_obj);
 
  private:
-    Worker worker_;
-    pthread_t pthread_id_;
-    pid_t thread_id_;
-    std::string thread_name_;
-    CountDownLatch count_down_latch_;
+    Worker worker_;             //线程函数
+    pthread_t pthread_id_;      //创建线程的id
+    pid_t thread_id_;           //线程id
+    std::string thread_name_;   //线程名字
+    utility::CountDownLatch count_down_latch_;   //倒计时
 
-    bool is_started_;
-    bool is_joined_;
+    bool is_started_;    //线程是否已经开始
+    bool is_joined_;     //线程是否已经join
 };
 
-#endif
+}  // namespace thread
+
+#endif  // THREAD_THREAD_H_

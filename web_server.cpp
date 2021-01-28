@@ -12,7 +12,7 @@ WebServer::WebServer(EventLoop* event_loop, int thread_num, int port)
     : event_loop_(event_loop), 
       thread_num_(thread_num),
       port_(port), 
-      started_(false) {
+      is_started_(false) {
     // new一个事件循环线程池 和用于接收的Channel
     event_loop_thread_pool_ = new EventLoopThreadPool(event_loop_, thread_num);
     accept_channel_ = new Channel(event_loop_);
@@ -21,6 +21,7 @@ WebServer::WebServer(EventLoop* event_loop, int thread_num, int port)
     listen_fd_ = SocketListen(port_); 
     accept_channel_->set_fd(listen_fd_);
     HandlePipeSignal();
+    
     //设置NIO非阻塞套接字
     if (SetSocketNonBlocking(listen_fd_) < 0) {
         perror("set socket non block failed");
@@ -34,11 +35,11 @@ void WebServer::Start() {
     event_loop_thread_pool_->Start();
     //accept的管道
     accept_channel_->set_events(EPOLLIN | EPOLLET);
-    accept_channel_->set_read_handler(bind(&WebServer::HandleNewConnect, this));
-    accept_channel_->set_connect_handler(bind(&WebServer::HandelCurConnect, this));
+    accept_channel_->set_read_handler(std::bind(&WebServer::HandleNewConnect, this));
+    accept_channel_->set_connect_handler(std::bind(&WebServer::HandelCurConnect, this));
     
     event_loop_->PollerAdd(accept_channel_, 0);
-    started_ = true;
+    is_started_ = true;
 }
 
 void WebServer::HandleNewConnect() {
@@ -81,5 +82,5 @@ void WebServer::HandleNewConnect() {
 }
 
 void WebServer::HandelCurConnect() {
-        event_loop_->PollerMod(accept_channel_);
+    event_loop_->PollerMod(accept_channel_);
 }

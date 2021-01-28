@@ -1,5 +1,5 @@
-#ifndef EVENT_LOOP_H_
-#define EVENT_LOOP_H_
+#ifndef EVENT_EVENT_LOOP_H_
+#define EVENT_EVENT_LOOP_H_
 
 #include <iostream>
 #include <functional>
@@ -12,6 +12,7 @@
 #include "utility/socket_utils.h"
 #include "log/logging.h"
 
+namespace event {
 // Reactor模式的核心 每个Reactor线程内部调用一个EventLoop
 // 内部不停的进行epoll_wait调用 然后调用fd对应Channel的相应回调函数进行处理
 class EventLoop {
@@ -29,17 +30,9 @@ class EventLoop {
     
     void RunInLoop(CallBack&& cb);
     void QueueInLoop(CallBack&& cb);
-    
-    bool is_in_loop_thread() const {
-        return thread_id_ == current_thread::thread_id();
-    }
-
-    void assert_in_loop_thread() {
-        assert(is_in_loop_thread());
-    }
 
     void ShutDown(std::shared_ptr<Channel> channel) {
-        shutDownWR(channel->get_fd());
+        ShutDownWR(channel->get_fd());
     }
 
     void PollerAdd(std::shared_ptr<Channel> channel, int timeout = 0) {
@@ -54,19 +47,30 @@ class EventLoop {
         poller_->EpollDel(channel);
     }
 
+    void AssertInLoopThread() {
+        assert(is_in_loop_thread());
+    }
+
+    bool is_in_loop_thread() const {
+        return thread_id_ == current_thread::thread_id();
+    }
+
  private:
+    static int CreateEventfd();
+
     void HandleRead();
     void HandleConnect();
     void WakeUp();
     void RunPendingFunctors();
 
  private:
-    std::shared_ptr<Epoll> poller_;
+    std::shared_ptr<Poller> poller_;
+    int event_fd_;
+    pid_t thread_id_;
+    std::shared_ptr<Channel> wakeup_channel_;
+
     mutable MutexLock mutex_;
     std::vector<CallBack> pending_functors_;
-    std::shared_ptr<Channel> wakeup_channel_;
-    const pid_t thread_id_;
-    int event_fd_;
 
     bool is_looping_;
     bool is_quit_;
@@ -74,4 +78,6 @@ class EventLoop {
     bool is_calling_pending_functors_;
 };
 
-#endif
+}  // namespace event
+
+#endif  // EVENT_EVENT_LOOP_H_

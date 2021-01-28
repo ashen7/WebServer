@@ -27,7 +27,7 @@ class WebServer {
     int thread_num_;
     EventLoop* event_loop_;
     std::unique_ptr<EventLoopThreadPool> event_loop_thread_pool_;
-    bool started_;
+    bool is_started_;
     std::shared_ptr<Channel> accept_channel_;
 };
 

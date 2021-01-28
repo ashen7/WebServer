@@ -1,17 +1,18 @@
-#ifndef MUTEX_LOCK_H_
-#define MUTEX_LOCK_H_
+#ifndef LOCKER_MUTEX_LOCK_H_
+#define LOCKER_MUTEX_LOCK_H_
 
 #include <stdio.h>
 #include <time.h>
 #include <pthread.h>
 
-#include "noncopyable.h"
+#include "utility/noncopyable.h"
 
+namespace locker {
 class ConditionVariable;
 
 //c++类不指定默认private方式继承 
 //private继承的父类的public, protected都会成为子类的private
-class MutexLock : NonCopyAble {
+class MutexLock : utility::NonCopyAble {
  public:
     MutexLock() {
         pthread_mutex_init(&mutex_, NULL);
@@ -41,7 +42,7 @@ class MutexLock : NonCopyAble {
 };
 
 //互斥锁RAII
-class LockGuard : NonCopyAble {
+class LockGuard : utility::NonCopyAble {
  public:
     explicit LockGuard(MutexLock& mutex) 
         : mutex_(mutex) {
@@ -57,7 +58,7 @@ class LockGuard : NonCopyAble {
 };
 
 //条件变量
-class ConditionVariable : NonCopyAble {
+class ConditionVariable : utility::NonCopyAble {
  public:
     explicit ConditionVariable(MutexLock& mutex) 
         : mutex_(mutex_) {
@@ -92,37 +93,6 @@ class ConditionVariable : NonCopyAble {
     pthread_cond_t cond_;
 };
 
-// CountDownLatch的主要作用是确保Thread中传进去的func真的启动了以后 外层的start才返回
-class CountDownLatch : NonCopyAble {
- public:
-    explicit CountDownLatch(int count)
-        : mutex_(), 
-          condition_(mutex_), 
-          count_(count) {
-    }
-    
-    ~CountDownLatch() {
-    }
+}  // namespace locker
 
-    void wait() {
-        LockGuard lock(mutex_);
-        while (count_ > 0) {
-            condition_.wait();
-        }
-    }
-
-    void count_down() {
-        LockGuard lock(mutex_);
-        --count_;
-        if (count_ == 0) {
-            condition_.notify_all();
-        }
-    }
-
- private:
-    mutable MutexLock mutex_;
-    ConditionVariable condition_;
-    int count_;
-};
-
-#endif
+#endif  // LOCKER_MUTEX_LOCK_H_

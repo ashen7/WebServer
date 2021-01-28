@@ -10,14 +10,12 @@
 #include "event/event_loop.h"
 #include "utility/utils.h"
 
+namespace http {
 //PTHREAD_ONCE_INIT初始化的变量保证pthread_once()函数只执行一次
 pthread_once_t MimeType::once_control = PTHREAD_ONCE_INIT;
 std::unordered_map<std::string, std::string> MimeType::mime_map;
 
-const int DEFAULT_EVENT = EPOLLIN | EPOLLET | EPOLLONESHOT;
-const int DEFAULT_EXPIRE_TIME = 2000;               // ms
-const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60 * 1000;  // ms
-
+//web server的图标favicon
 char favicon[555] = {
     '\x89', 'P',    'N',    'G',    '\xD',  '\xA',  '\x1A', '\xA',  '\x0',
     '\x0',  '\x0',  '\xD',  'I',    'H',    'D',    'R',    '\x0',  '\x0',
@@ -83,7 +81,7 @@ char favicon[555] = {
     'N',    'D',    '\xAE', 'B',    '\x60', '\x82',
 };
 
-//HTML协议的文件传输类型
+//HTML协议的文件类型
 void MimeType::Init() {
     mime[".html"] = "text/html";
     mime[".avi"] = "video/x-msvideo";
@@ -101,6 +99,7 @@ void MimeType::Init() {
     mime["default"] = "text/html";
 }
 
+//根据type得到mime文件类型
 std::string MimeType::get_mime(const std::string& type) {
     //只会执行一次的函数
     pthread_once(&once_control, MimeType::OnceInit);
@@ -124,6 +123,7 @@ Http::Http(EventLoop* event_loop, int connect_fd)
       version_(HTTP_11),
       is_error_(false),
       is_keep_alive_(false) {
+    //给连接套接字绑定读、写、连接的回调函数
     channel_->set_read_handler(std::bind(&Http::HandleRead, this));
     channel_->set_write_handler(std::bind(&Http::HandleWrite, this));
     channel_->set_connect_handler(std::bind(&Http::HandleConnect, this));
@@ -133,16 +133,25 @@ Http:~Http() {
     close(connect_fd_);
 }
 
-void Http::NewEvent() {
+//给fd注册默认事件
+void Http::SetDefaultEvent() {
     channel_->set_events(DEFAULT_EVENT);
     event_loop_->PollerAdd(channel_, DEFAULT_EXPIRE_TIME);
 }
 
+//处理关闭 删除fd注册的事件
+void Http::HandleClose() {
+    connection_state_ = DISCONNECTED;
+    std::shared_ptr<Http> guard(std::shared_from_this());
+    event_loop_->PollerDel(channel_);
+}
+
+//处理读 
 void Http::HandleRead() {
-    int& events_ = channel_->get_events();
+    int& events = channel_->get_events();
     do {
-        bool read_zero_bytes = false;
-        int read_bytes = Read(connect_fd_, read_buffer_, is_zero);
+        bool is_read_zero_bytes = false;
+        int read_bytes = Read(connect_fd_, read_buffer_, is_read_zero_bytes);
         LOG << "Request: " << read_buffer_;
         if (connection_state_ == DISCONNECTING) {
             read_buffer_.clear();
@@ -153,7 +162,7 @@ void Http::HandleRead() {
             is_error_ = true;
             HandleError(connect_fd_, 400, "Bad Request");
             break;
-        } else if (is_zero) {
+        } else if (is_read_zero_bytes) {
             // 有请求出现但是读不到数据，可能是Request Aborted，或者来自网络的数据没有达到等原因
             // 最可能是对端已经关闭了，统一按照对端已经关闭处理
             connection_state_ = DISCONNECTING;
@@ -227,7 +236,7 @@ void Http::HandleRead() {
     if (!is_error_) {
         if (write_buffer_.size() > 0) {
             HandleWrite();
-            // events_ |= EPOLLOUT;
+            // events |= EPOLLOUT;
         }
         // is_error_ may change
         if (!is_error_ && process_state_ == STATE_FINISH) {
@@ -241,47 +250,47 @@ void Http::HandleRead() {
             // CONNECTED)
             // {
             //     this->reset();
-            //     events_ |= EPOLLIN;
+            //     events |= EPOLLIN;
             // }
         } else if (!is_error_ && connection_state_ != DISCONNECTED) {
-            events_ |= EPOLLIN;
+            events |= EPOLLIN;
         }
     }
 }
 
 void Http::HandleWrite() {
     if (!is_error_ && connection_state_ != DISCONNECTED) {
-        int& events_ = channel_->get_events();
+        int& events = channel_->get_events();
         if (Write(connect_fd_, write_buffer_) < 0) {
             perror("Write");
-            events_ = 0;
+            events = 0;
             is_error_ = true;
         }
         if (write_buffer_.size() > 0) {
-            events_ |= EPOLLOUT;
+            events |= EPOLLOUT;
         }
     }
 }
 
 void Http::HandleConnect() {
     seperateTimer();
-    int& events_ = channel_->get_events();
+    int& events = channel_->get_events();
     if (!is_error_ && connection_state_ == CONNECTED) {
-        if (events_ != 0) {
+        if (events != 0) {
             int timeout = DEFAULT_EXPIRE_TIME;
             if (is_keep_alive_)
                 timeout = DEFAULT_KEEP_ALIVE_TIME;
-            if ((events_ & EPOLLIN) && (events_ & EPOLLOUT)) {
-                events_ = int(0);
-                events_ |= EPOLLOUT;
+            if ((events & EPOLLIN) && (events & EPOLLOUT)) {
+                events = int(0);
+                events |= EPOLLOUT;
             }
-            // events_ |= (EPOLLET | EPOLLONESHOT);
-            events_ |= EPOLLET;
+            // events |= (EPOLLET | EPOLLONESHOT);
+            events |= EPOLLET;
             event_loop_->updatePoller(channel_, timeout);
 
         } else if (is_keep_alive_) {
-            events_ |= (EPOLLIN | EPOLLET);
-            // events_ |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
+            events |= (EPOLLIN | EPOLLET);
+            // events |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
             int timeout = DEFAULT_KEEP_ALIVE_TIME;
             event_loop_->updatePoller(channel_, timeout);
         } else {
@@ -289,14 +298,14 @@ void Http::HandleConnect() {
             // event_loop_->shutdown(channel_);
             // event_loop_->RunInLoop(std::bind(&Http::HandleClose,
             // shared_from_this()));
-            events_ |= (EPOLLIN | EPOLLET);
-            // events_ |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
+            events |= (EPOLLIN | EPOLLET);
+            // events |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
             int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
             event_loop_->updatePoller(channel_, timeout);
         }
     } else if (!is_error_ && connection_state_ == DISCONNECTING &&
-               (events_ & EPOLLOUT)) {
-        events_ = (EPOLLOUT | EPOLLET);
+               (events & EPOLLOUT)) {
+        events = (EPOLLOUT | EPOLLET);
     } else {
         // cout << "close with errors" << endl;
         event_loop_->RunInLoop(std::bind(&Http::HandleClose, shared_from_this()));
@@ -324,12 +333,6 @@ void Http::HandleError(int fd, int err_num, string short_msg) {
     Write(fd, send_buff, strlen(send_buff));
     sprintf(send_buff, "%s", body_buff.c_str());
     Write(fd, send_buff, strlen(send_buff));
-}
-
-void Http::HandleClose() {
-    connection_state_ = DISCONNECTED;
-    shared_ptr<Http> guard(shared_from_this());
-    event_loop_->PollerDel(channel_);
 }
 
 UriState Http::ParseUri() {
@@ -638,3 +641,5 @@ void Http::SeperateTimer() {
         timer_.reset();
     }
 }
+
+}  // namespace http

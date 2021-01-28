@@ -34,10 +34,11 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
-    Logging::set_log_filename(log_path);
     
+    Logging::set_log_filename(log_path);
     EventLoop main_loop;
     WebServer web_server(&main_loop, thread_num, port);
+
     web_server.Start();
     main_loop.Loop();
     
