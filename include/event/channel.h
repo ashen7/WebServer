@@ -10,10 +10,15 @@
 
 #include "timer/timer.h"
 
-class EventLoop;
-class http::Http;
+//类的前置声明
+
+namespace http {
+class Http;
+}
 
 namespace event {
+class EventLoop;
+
 // Channel封装了一系列fd对应的操作 使用EventCallBack回调函数的手法
 // 包括处理读 处理写 处理错误 处理连接4个回调函数
 // fd一般是tcp连接connfd(套接字fd), 或者timerfd(定时器fd)，文件fd
@@ -27,10 +32,10 @@ class Channel {
 
     //IO事件的回调函数 由Poller通过EventLoop调用
     void HandleEvents();      
-    void HandleConnect();
     void HandleRead();
     void HandleWrite();
-    void HandleError(int fd, int err_num, std::string short_msg);
+    void HandleConnect();
+    void HandleError();
 
     int fd() const {
         return fd_;

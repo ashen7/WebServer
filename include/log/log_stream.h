@@ -5,12 +5,14 @@
 #include <string.h>
 #include <string>
 
+#include "utility/noncopyable.h"
+
 class AsyncLogging;
 const int kSmallBuffer = 4000;
 const int kLargeBuffer = 4000 * 1000;
 
 template <int SIZE>
-class FixedBuffer : NonCopyAble {
+class FixedBuffer : utility::NonCopyAble {
  public:
     FixedBuffer() : cur_(data_) {}
 
@@ -56,7 +58,7 @@ class FixedBuffer : NonCopyAble {
     char* cur_;
 };
 
-class LogStream : NonCopyAble {
+class LogStream : utility::NonCopyAble {
  public:
     typedef FixedBuffer<kSmallBuffer> Buffer;
 

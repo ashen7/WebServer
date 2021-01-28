@@ -42,7 +42,7 @@ class Poller {
 
  private:
     int epoll_fd_;
-    std::vector<epoll_event>> event_array_;
+    std::vector<epoll_event> event_array_;
     std::vector<std::shared_ptr<Channel>> channel_array_;
     std::vector<std::shared_ptr<http::Http>> http_array_;
     timer::TimerHeap timer_heap_;

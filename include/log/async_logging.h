@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "locker/mutex_lock.h"
 #include "log_stream.h"
+#include "locker/mutex_lock.h"
 #include "thread/thread.h"
 
 class AppendFile {
@@ -52,7 +52,7 @@ class AppendFile {
 };
 
 // TODO 提供自动归档功能
-class LogFile : NonCopyAble {
+class LogFile : utility::NonCopyAble {
  public:
     // 每被append
     // flushEveryN次，flush一下，会往文件写，只不过，文件也是带缓冲区的
@@ -97,7 +97,7 @@ class LogFile : NonCopyAble {
     std::unique_ptr<AppendFile> file_;
 };
 
-class AsyncLogging : NonCopyAble {
+class AsyncLogging : utility::NonCopyAble {
  public:
     AsyncLogging(const std::string basename, int flushInterval = 2);
     ~AsyncLogging() {
@@ -125,13 +125,14 @@ class AsyncLogging : NonCopyAble {
     typedef FixedBuffer<kLargeBuffer> Buffer;
     typedef std::vector<std::shared_ptr<Buffer>> BufferVector;
     typedef std::shared_ptr<Buffer> BufferPtr;
+    
     const int flushInterval_;
     bool running_;
     std::string basename_;
-    Thread thread_;
-    MutexLock mutex_;
-    ConditionVariable condition_;
-    CountDownLatch latch_;
+    thread::Thread thread_;
+    locker:;MutexLock mutex_;
+    locker::ConditionVariable condition_;
+    utility::CountDownLatch latch_;
     BufferPtr currentBuffer_;
     BufferPtr nextBuffer_;
     BufferVector buffers_;

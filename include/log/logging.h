@@ -14,17 +14,17 @@ class Logging {
  public:
     Logging(const char* fileName, int line);
     ~Logging();
-    
+
     LogStream& stream() {
         return impl_.stream_;
     }
 
-    static std::string get_log_filename() {
+    static std::string log_filename() {
         return log_filename_;
     }
 
-    static void SetLogFileName(std::string filename) {
-        logFileName_ = fileName;
+    static void set_log_filename(std::string filename) {
+        log_filename_ = filename;
     }
 
  private:

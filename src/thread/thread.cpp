@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "thread/thread.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -11,8 +11,7 @@
 #include <iostream>
 #include <memory>
 
-namespace thread {
-namespace thread_local {
+namespace thread_local_storage {
 // TLS
 __thread int tls_thread_id = 0;                     //线程id
 __thread char tls_thread_id_str[32];                //线程id字符串
@@ -25,25 +24,25 @@ pid_t get_tid() {
 }
 
 //得到线程id syscall 并赋值线程id字符串, 线程id字符串长度
-void thread::cache_thread_id() {
+void cache_thread_id() {
     if (tls_thread_id == 0) {
         tls_thread_id = get_tid();
         tls_thread_id_str_len = snprintf(tls_thread_id_str, sizeof(tls_thread_id_str), "%5d ", tls_thread_id);
     }
 }
 
-}  // namespace thread_local
+}  // namespace thread_local_storage
 
-
+namespace thread {
 // 为了在线程中保留thread_name,thread_id这些数据
-class ThreadData : utility::NonCopyAble {{
+class ThreadData : utility::NonCopyAble {
  public:
     typedef Thread::Worker Worker;
 
     ThreadData(const Worker& worker,
-               const string& thread_name,
+               const std::string& thread_name,
                pid_t* thread_id,
-               CountDownLatch* count_down_latch)
+               utility::CountDownLatch* count_down_latch)
         : worker_(worker), 
           thread_name_(thread_name), 
           thread_id_(thread_id), 
@@ -56,18 +55,18 @@ class ThreadData : utility::NonCopyAble {{
     //得到线程id 运行线程函数 标记该线程为finished
     void Run() {
         //赋值线程id
-        *thread_id_ = thread_local::thread_id();
+        *thread_id_ = thread_local_storage::thread_id();
         thread_id_ = NULL;
         //倒计时 唤醒线程
         count_down_latch_->count_down();
         count_down_latch_ = NULL;
         //设置线程名
-        thread_local::tls_thread_name = thread_name_.empty() ? "Thread" : thread_name_.c_str();
-        prctl(PR_SET_NAME, thread_local::tls_thread_name);
+        thread_local_storage::tls_thread_name = thread_name_.empty() ? "Thread" : thread_name_.c_str();
+        prctl(PR_SET_NAME, thread_local_storage::tls_thread_name);
 
         //执行线程函数
         worker_();
-        thread_local::tls_thread_name = "finished";
+        thread_local_storage::tls_thread_name = "finished";
     }
 
  public:
@@ -124,7 +123,7 @@ int Thread::Join() {
 }
 
 // 调用ThreadData的Run函数 执行worker线程函数
-static void* Run(void* thread_obj) {
+void* Thread::Run(void* thread_obj) {
     ThreadData* thread_data = static_cast<ThreadData*>(thread_obj);
     thread_data->Run();
 

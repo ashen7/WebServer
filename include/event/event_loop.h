@@ -1,16 +1,18 @@
 #ifndef EVENT_EVENT_LOOP_H_
 #define EVENT_EVENT_LOOP_H_
 
+#include <assert.h>
+
 #include <iostream>
 #include <functional>
 #include <memory>
 #include <vector>
 
 #include "channel.h"
-#include "epoll.h"
+#include "poller.h"
 #include "thread/thread.h"
 #include "utility/socket_utils.h"
-#include "log/logging.h"
+// #include "log/logging.h"
 
 namespace event {
 // Reactor模式的核心 每个Reactor线程内部调用一个EventLoop
@@ -32,7 +34,7 @@ class EventLoop {
     void QueueInLoop(CallBack&& cb);
 
     void ShutDown(std::shared_ptr<Channel> channel) {
-        ShutDownWR(channel->get_fd());
+        utility::ShutDownWR(channel->fd());
     }
 
     void PollerAdd(std::shared_ptr<Channel> channel, int timeout = 0) {
@@ -52,7 +54,7 @@ class EventLoop {
     }
 
     bool is_in_loop_thread() const {
-        return thread_id_ == current_thread::thread_id();
+        return thread_id_ == thread_local_storage::thread_id();
     }
 
  private:
@@ -61,7 +63,7 @@ class EventLoop {
     void HandleRead();
     void HandleConnect();
     void WakeUp();
-    void RunPendingFunctors();
+    void DoPendingFunctors();
 
  private:
     std::shared_ptr<Poller> poller_;
@@ -69,7 +71,7 @@ class EventLoop {
     pid_t thread_id_;
     std::shared_ptr<Channel> wakeup_channel_;
 
-    mutable MutexLock mutex_;
+    mutable locker::MutexLock mutex_;
     std::vector<CallBack> pending_functors_;
 
     bool is_looping_;

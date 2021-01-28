@@ -10,23 +10,24 @@
 #include "async_logging.h"
 #include "thread/thread.h"
 
-static pthread_once_t once_control_ = PTHREAD_ONCE_INIT;
-static AsyncLogging* AsyncLogger_;
+static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+static AsyncLogging* async_logging = nullptr;
 
 std::string Logging::log_filename_ = "./WebServer.log";
 
 void once_init() {
-    AsyncLogger_ = new AsyncLogging(Logging::getLogFileName());
-    AsyncLogger_->start();
+    async_logging = new AsyncLogging(Logging::log_filename());
+    async_logging->Start();
 }
 
 void output(const char* msg, int len) {
-    pthread_once(&once_control_, once_init);
-    AsyncLogger_->append(msg, len);
+    pthread_once(&once_control, once_init);
+    async_logging->Append(msg, len);
 }
 
 Logging::Logging(const char* filename, int line) 
-    : impl_(filename, line) {}
+    : impl_(filename, line) {
+}
 
 Logging::~Logging() {
     impl_.stream_ << " -- " << impl_.basename_ << ':' << impl_.line_ << '\n';

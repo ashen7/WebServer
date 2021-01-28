@@ -1,4 +1,4 @@
-#include "socket_utils.h"
+#include "utility/socket_utils.h"
 
 #include <string.h>
 #include <assert.h>
@@ -156,7 +156,7 @@ int Read(int fd, std::string& read_buffer, bool& is_read_zero_bytes) {
         }
         
         read_sum_bytes += read_bytes;
-        read_buffer += std::string(read_buffer, read_buffer + read_bytes);
+        read_buffer += std::string(buffer, buffer + read_bytes);
     }
 
     return read_sum_bytes;
@@ -184,7 +184,7 @@ int Read(int fd, std::string& read_buffer) {
         }
 
         read_sum_bytes += read_bytes;
-        read_buffer += std::string(read_buffer, read_buffer + read_bytes);
+        read_buffer += std::string(buffer, buffer + read_bytes);
     }
 
     return read_sum_bytes;

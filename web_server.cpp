@@ -1,29 +1,33 @@
 #include "web_server.h"
 
+#include <string.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+
+#include <memory>
 #include <functional>
 
 #include "utility/socket_utils.h"
-#include "log/logging.h"
+// #include "log/logging.h"
 
-WebServer::WebServer(EventLoop* event_loop, int thread_num, int port)
+WebServer::WebServer(event::EventLoop* event_loop, int thread_num, int port)
     : event_loop_(event_loop), 
       thread_num_(thread_num),
       port_(port), 
       is_started_(false) {
     // new一个事件循环线程池 和用于接收的Channel
-    event_loop_thread_pool_ = new EventLoopThreadPool(event_loop_, thread_num);
-    accept_channel_ = new Channel(event_loop_);
-    
+    event_loop_thread_pool_ = std::unique_ptr<event::EventLoopThreadPool>(new event::EventLoopThreadPool(
+                                                                          event_loop_, thread_num));
+    accept_channel_ = std::make_shared<event::Channel>(event_loop_);
+
     //绑定服务器ip和端口 监听端口
-    listen_fd_ = SocketListen(port_); 
+    listen_fd_ = utility::SocketListen(port_); 
     accept_channel_->set_fd(listen_fd_);
-    HandlePipeSignal();
+    utility::HandlePipeSignal();
     
     //设置NIO非阻塞套接字
-    if (SetSocketNonBlocking(listen_fd_) < 0) {
+    if (utility::SetSocketNonBlocking(listen_fd_) < 0) {
         perror("set socket non block failed");
         abort();
     }
@@ -49,33 +53,33 @@ void WebServer::HandleNewConnect() {
 
     while (true) {
         int connect_fd = accept(listen_fd_, (struct sockaddr*)&client_addr, &client_addr_len);
-        EventLoop* event_loop = event_loop_thread_pool_->getNextLoop();
-        LOG << "New connection from " << inet_ntoa(client_addr.sin_addr) 
-            << ":" << ntohs(client_addr.sin_port);
+        event::EventLoop* event_loop = event_loop_thread_pool_->GetNextLoop();
+        // LOG << "New connection from " << inet_ntoa(client_addr.sin_addr) 
+        //     << ":" << ntohs(client_addr.sin_port);
         if (connect_fd < 0) {
-            LOG << "Accept failed!";
+            // LOG << "Accept failed!";
             break;
         }
         // 限制服务器的最大并发连接数
         if (connect_fd >= MAX_FD_NUM) {
-            LOG << "Internal server busy!";
+            // LOG << "Internal server busy!";
             close(connect_fd);
             break;
         }
         // 设为非阻塞模式
-        if (SetSocketNonBlocking(connect_fd) < 0) {
-            LOG << "set socket nonblock failed!";
+        if (utility::SetSocketNonBlocking(connect_fd) < 0) {
+            // LOG << "set socket nonblock failed!";
             close(connect_fd);
             break;
         }
         //设置套接字
-        SetSocketNodelay(connect_fd);
+        utility::SetSocketNoDelay(connect_fd);
         // setSocketNoLinger(connect_fd);
 
-        shared_ptr<Http> req_info(new Http(event_loop, connect_fd));
-        req_info->get_channel()->set_holder(req_info);
+        std::shared_ptr<http::Http> req_info(new http::Http(event_loop, connect_fd));
+        req_info->channel()->set_holder(req_info);
         
-        event_loop->QueueInLoop(std::bind(&Http::NewEvent, req_info));
+        event_loop->QueueInLoop(std::bind(&http::Http::AddNewEvent, req_info));
     }
 
     accept_channel_->set_events(EPOLLIN | EPOLLET);

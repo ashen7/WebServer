@@ -12,12 +12,13 @@
 
 #include "timer/timer.h"
 
-namespace http {
 //类的前置声明
-class event::EventLoop;
-class event::Channel;
-class timer::Timer;
+namespace event {
+class EventLoop;
+class Channel;
+}
 
+namespace http {
 //http mime文件类型
 class MimeType {
  public:
@@ -101,23 +102,23 @@ class Http : public std::enable_shared_from_this<Http> {
     };
 
  public:
-    Http(EventLoop* loop, int connfd);
+    Http(event::EventLoop* event_loop, int connect_fd);
     ~Http();
 
-    void SetDefaultEvent();  //给fd注册默认事件
+    void AddNewEvent();  //给fd注册默认事件
     void HandleClose();      
     void Reset();
     void SeperateTimer();
     
-    void set_timer(std::shared_ptr<Timer> timer) {
+    void set_timer(std::shared_ptr<timer::Timer> timer) {
         timer_ = timer;
     }
     
-    std::shared_ptr<Channel> channel() {
+    std::shared_ptr<event::Channel> channel() {
         return channel_;
     }
 
-    EventLoop* event_loop() {
+    event::EventLoop* event_loop() {
         return event_loop_;
     }
 

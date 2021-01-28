@@ -2,7 +2,7 @@
 
 #include "web_server.h"
 #include "event/event_loop.h"
-#include "log/logging.h"
+// #include "log/logging.h"
 
 int main(int argc, char* argv[]) {
     int thread_num = 8;
@@ -35,8 +35,8 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    Logging::set_log_filename(log_path);
-    EventLoop main_loop;
+    // Logging::set_log_filename(log_path);
+    event::EventLoop main_loop;
     WebServer web_server(&main_loop, thread_num, port);
 
     web_server.Start();

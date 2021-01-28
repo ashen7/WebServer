@@ -13,8 +13,7 @@
 #include "utility/count_down_latch.h"
 #include "utility/noncopyable.h"
 
-namespace thread {
-namespace thread_local {
+namespace thread_local_storage {
 // __thread: TLS线程局部存储 每个当前线程都有一个该变量的实例
 extern __thread int tls_thread_id;              //线程id
 extern __thread char tls_thread_id_str[32];     //线程id字符串
@@ -44,8 +43,9 @@ inline const char* thread_name() {
     return tls_thread_name;
 }
 
-}  // namespace thread_local
+}  // namespace thread_local_storage
 
+namespace thread {
 class Thread : utility::NonCopyAble {
  public:
     typedef std::function<void()> Worker;
@@ -59,7 +59,7 @@ class Thread : utility::NonCopyAble {
     int Join();
 
     bool is_started() const {
-        return is_start_;
+        return is_started_;
     }
 
     pid_t thread_id() const {

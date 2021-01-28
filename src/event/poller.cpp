@@ -1,4 +1,4 @@
-#include "poller.h"
+#include "event/poller.h"
 
 #include <string.h>
 #include <assert.h>
@@ -11,8 +11,8 @@
 #include <iostream>
 #include <queue>
 
-#include "log/logging.h"
 #include "utility/socket_utils.h"
+// #include "log/logging.h"
 
 namespace event {
 
@@ -32,7 +32,7 @@ Poller::~Poller() {
 // io多路复用 epoll wait返回就绪事件数
 std::vector<std::shared_ptr<Channel>> Poller::Poll() {
     while (true) {
-        int events_num = epoll_wait(epoll_fd_, &event_array_, MAX_EVENTS_NUM, EPOLL_TIMEOUT);
+        int events_num = epoll_wait(epoll_fd_, &(*event_array_.begin()), MAX_EVENTS_NUM, EPOLL_TIMEOUT);
         if (events_num < 0) {
             perror("epoll wait error");
         }
@@ -50,7 +50,7 @@ std::vector<std::shared_ptr<Channel>> Poller::Poll() {
                 channel->set_events(0);
                 channel_array.push_back(channel);
             } else {
-                LOG << "Channel is invalid";
+                // LOG << "Channel is invalid";
             }
         }
 
@@ -62,11 +62,11 @@ std::vector<std::shared_ptr<Channel>> Poller::Poll() {
 
 // 注册新描述符
 void Poller::EpollAdd(std::shared_ptr<Channel> channel, int timeout) {
-    int fd = channel->get_fd();
-    int events = channel->get_events();
+    int fd = channel->fd();
+    int events = channel->events();
     if (timeout > 0) {
         AddTimer(channel, timeout);
-        http_array_[fd] = channel->get_holder();
+        http_array_[fd] = channel->holder();
     }
 
     //注册要监听的事件
@@ -91,11 +91,11 @@ void Poller::EpollMod(std::shared_ptr<Channel> channel, int timeout) {
         AddTimer(channel, timeout);
     }
 
-    int fd = channel->get_fd();
+    int fd = channel->fd();
     if (!channel->update_last_events()) {
         struct epoll_event event;
         event.data.fd = fd;
-        event.events = channel->get_events();
+        event.events = channel->events();
         if (epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, fd, &event) < 0) {
             perror("EpollMod error");
             channel_array_[fd].reset();
@@ -105,10 +105,10 @@ void Poller::EpollMod(std::shared_ptr<Channel> channel, int timeout) {
 
 // 从epoll中删除描述符
 void Poller::EpollDel(std::shared_ptr<Channel> channel) {
-    int fd = channel->get_fd();
+    int fd = channel->fd();
     struct epoll_event event;
     event.data.fd = fd;
-    event.events = channel->get_last_events();
+    event.events = channel->last_events();
     // event.events = 0;
     // channel->EqualAndUpdateLastEvents()
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, &event) < 0) {
@@ -119,11 +119,11 @@ void Poller::EpollDel(std::shared_ptr<Channel> channel) {
 }
 
 void Poller::AddTimer(std::shared_ptr<Channel> channel, int timeout) {
-    std::shared_ptr<http::Http> t = channel->get_holder();
+    std::shared_ptr<http::Http> t = channel->holder();
     if (t) {
         timer_heap_.AddTimer(t, timeout);
     } else {
-        LOG << "timer add fail";
+        // LOG << "timer add fail";
     }
 }
 

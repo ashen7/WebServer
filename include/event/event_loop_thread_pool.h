@@ -1,5 +1,5 @@
-#ifndef EVENT_LOOP_THREAD_POOL_H_
-#define EVENT_LOOP_THREAD_POOL_H_
+#ifndef EVENT_EVENT_LOOP_THREAD_POOL_H_
+#define EVENT_EVENT_LOOP_THREAD_POOL_H_
 
 #include "event_loop.h"
 
@@ -9,13 +9,14 @@
 #include <vector>
 
 #include "channel.h"
-#include "epoll.h"
+#include "poller.h"
 #include "locker/mutex_lock.h"
 #include "thread/thread.h"
 #include "utility/socket_utils.h"
-#include "log/logging.h"
+// #include "log/logging.h"
 
-class EventLoopThread : NonCopyAble {
+namespace event {
+class EventLoopThread : utility::NonCopyAble {
  public:
     EventLoopThread();
     ~EventLoopThread();
@@ -28,21 +29,21 @@ class EventLoopThread : NonCopyAble {
  private:
     EventLoop* event_loop_;
     bool is_exiting_;
-    Thread thread_;
-    MutexLock mutex_;
-    ConditionVariable condition_;
+    thread::Thread thread_;
+    locker::MutexLock mutex_;
+    locker::ConditionVariable condition_;
 };
 
-class EventLoopThreadPool : NonCopyAble {
+class EventLoopThreadPool : utility::NonCopyAble {
  public:
     EventLoopThreadPool(EventLoop* event_loop, int thread_num);
     ~EventLoopThreadPool();
 
     void Start();
-    EventLoop* getNextLoop();
+    EventLoop* GetNextLoop();
 
  private:
-    EventLoop* event_loop;
+    EventLoop* event_loop_;
     bool is_started_;
     int thread_num_;
     int next_;
@@ -50,4 +51,6 @@ class EventLoopThreadPool : NonCopyAble {
     std::vector<EventLoop*> event_loop_array_;
 };
 
-#endif
+}  // namespace event
+
+#endif  // EVENT_EVENT_LOOP_THREAD_POOL_H_

@@ -1,4 +1,4 @@
-#include "channel.h"
+#include "event/channel.h"
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -6,8 +6,8 @@
 #include <iostream>
 #include <queue>
 
-#include "poller.h"
-#include "event_loop.h"
+#include "event/poller.h"
+#include "event/event_loop.h"
 #include "utility/socket_utils.h"
 
 namespace event {
@@ -58,12 +58,6 @@ void Channel::HandleEvents() {
     HandleConnect();
 }
 
-void Channel::HandleConnect() {
-    if (connect_handler_) {
-        connect_handler_();
-    }
-}
-
 void Channel::HandleRead() {
     if (read_handler_) {
         read_handler_();
@@ -73,6 +67,12 @@ void Channel::HandleRead() {
 void Channel::HandleWrite() {
     if (write_handler_) {
         write_handler_();
+    }
+}
+
+void Channel::HandleConnect() {
+    if (connect_handler_) {
+        connect_handler_();
     }
 }
 

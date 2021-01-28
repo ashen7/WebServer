@@ -1,14 +1,15 @@
 #include "async_logging.h"
 
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 #include <unistd.h>
+
 #include <functional>
 
-AsyncLogging::AsyncLogging(std::string logFileName_, int flushInterval)
+AsyncLogging::AsyncLogging(std::string log_filename_, int flushInterval)
     : flushInterval_(flushInterval),
       running_(false),
-      basename_(logFileName_),
+      basename_(log_filename_),
       thread_(std::bind(&AsyncLogging::threadFunc, this), "Logging"),
       mutex_(),
       cond_(mutex_),
@@ -16,16 +17,16 @@ AsyncLogging::AsyncLogging(std::string logFileName_, int flushInterval)
       nextBuffer_(new Buffer),
       buffers_(),
       latch_(1) {
-    assert(logFileName_.size() > 1);
+    assert(log_filename_.size() > 1);
     currentBuffer_->bzero();
     nextBuffer_->bzero();
     buffers_.reserve(16);
 }
 
-void AsyncLogging::append(const char* logline, int len) {
+void AsyncLogging::Append(const char* logline, int len) {
     LockGuard lock(mutex_);
     if (currentBuffer_->avail() > len)
-        currentBuffer_->append(logline, len);
+        currentBuffer_->Append(logline, len);
     else {
         buffers_.push_back(currentBuffer_);
         currentBuffer_.reset();
@@ -33,7 +34,7 @@ void AsyncLogging::append(const char* logline, int len) {
             currentBuffer_ = std::move(nextBuffer_);
         else
             currentBuffer_.reset(new Buffer);
-        currentBuffer_->append(logline, len);
+        currentBuffer_->Append(logline, len);
         cond_.notify();
     }
 }
@@ -78,14 +79,14 @@ void AsyncLogging::threadFunc() {
             //          Timestamp::now().toFormattedString().c_str(),
             //          buffersToWrite.size()-2);
             // fputs(buf, stderr);
-            // output.append(buf, static_cast<int>(strlen(buf)));
+            // output.Append(buf, static_cast<int>(strlen(buf)));
             buffersToWrite.erase(buffersToWrite.begin() + 2,
                                  buffersToWrite.end());
         }
 
         for (size_t i = 0; i < buffersToWrite.size(); ++i) {
             // FIXME: use unbuffered stdio FILE ? or use ::writev ?
-            output.append(buffersToWrite[i]->data(),
+            output.Append(buffersToWrite[i]->data(),
                           buffersToWrite[i]->length());
         }
 

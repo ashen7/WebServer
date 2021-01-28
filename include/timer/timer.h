@@ -7,10 +7,12 @@
 
 #include "utility/noncopyable.h"
 
-namespace timer {
 //类的前置声明
-class http::Http;
+namespace http {
+class Http;
+}
 
+namespace timer {
 //定时器类
 class Timer {
  public:
@@ -21,22 +23,11 @@ class Timer {
 
     //更新到期时间 = 当前时间 + 超时时间
     void Update(int timeout);
+    //是否到期
+    bool is_expired();
     //释放http
     void Clear();
-
-    //是否到期
-    bool is_expired() {
-        struct timeval now;
-        gettimeofday(&now, NULL);
-        size_t current_time = (((now.tv_sec % 10000) * 1000) + (now.tv_usec / 1000));
-        if (current_time >= expired_time_) {
-            is_deleted_ = true;
-            return true;
-        }
-        
-        return false;
-    }
-
+       
     //得到到期时间
     int expire_time() const {
         return expire_time_;
