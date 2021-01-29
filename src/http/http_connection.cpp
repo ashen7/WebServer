@@ -115,7 +115,7 @@ std::string MimeType::get_mime(const std::string& type) {
 //http类
 HttpConnection::HttpConnection(event::EventLoop* event_loop, int connect_fd)
     : event_loop_(event_loop),
-      channel_(new event::Channel(event_loop, connect_fd)),
+      channel_(new event::Channel(connect_fd)),
       connect_fd_(connect_fd),
       cur_read_pos_(0),
       connection_state_(CONNECTED),
@@ -153,6 +153,7 @@ void HttpConnection::HandleRead() {
     int& events = channel_->events();
     do {
         bool is_read_zero_bytes = false;
+        //读客户端发来的请求数据 存入read_buffer
         int read_bytes = utility::Read(connect_fd_, read_buffer_, is_read_zero_bytes);
         // LOG << "Request: " << read_buffer_;
         if (connection_state_ == DISCONNECTING) {

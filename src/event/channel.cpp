@@ -11,23 +11,19 @@
 
 namespace event {
 
-Channel::Channel(EventLoop* event_loop)
-    : event_loop_(event_loop), 
-      fd_(0),
-      events_(0), 
-      last_events_(0) { 
+Channel::Channel() {
+    fd_ = 0;
+    events_ = 0;
+    last_events_ = 0;  
 }
 
-Channel::Channel(EventLoop* event_loop, int fd)
-    : event_loop_(event_loop), 
-      fd_(fd), 
-      events_(0), 
-      last_events_(0) {
+Channel::Channel(int fd) {
+    fd_ = fd;
+    events_ = 0;
+    last_events_ = 0; 
 }
 
 Channel::~Channel() {
-    // poller_->epoll_del(fd, events_);
-    // close(fd_);
 }
 
 //IO事件的回调函数 EventLoop中调用Loop开始事件循环 会调用Poll得到就绪事件 
@@ -39,7 +35,6 @@ void Channel::HandleEvents() {
         events_ = 0;
         return;
     }
-    
     //触发错误事件
     if (revents_ & EPOLLERR) {
         HandleError();
@@ -55,28 +50,32 @@ void Channel::HandleEvents() {
     if (revents_ & EPOLLOUT) {
         HandleWrite();
     }
-    //处理连接事件
+    //不管就绪了什么事件 最后都要处理连接事件
     HandleConnect();
 }
 
+//处理读事件的回调函数
 void Channel::HandleRead() {
     if (read_handler_) {
         read_handler_();
     }
 }
 
+//处理写事件的回调函数
 void Channel::HandleWrite() {
     if (write_handler_) {
         write_handler_();
     }
 }
 
+//处理连接事件的回调函数
 void Channel::HandleConnect() {
     if (connect_handler_) {
         connect_handler_();
     }
 }
 
+//处理错误事件的回调函数
 void Channel::HandleError() {
     if (error_handler_) {
         error_handler_();

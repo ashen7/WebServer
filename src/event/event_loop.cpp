@@ -24,7 +24,7 @@ EventLoop::EventLoop()
     event_fd_ = CreateEventfd();
     //这个eventloop是属于这个线程id的
     thread_id_ = current_thread::thread_id();
-    wakeup_channel_ = std::make_shared<Channel>(this, event_fd_);
+    wakeup_channel_ = std::make_shared<Channel>(event_fd_);
 
     //如果本线程已经拥有一个EventLoop 就不能再拥有了
     if (tls_event_loop) {

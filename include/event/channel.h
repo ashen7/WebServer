@@ -11,9 +11,6 @@
 #include "http/http_connection.h"
 
 namespace event {
-//类的前置声明
-class EventLoop;
-
 // Channel封装了一系列fd对应的操作 使用EventCallBack回调函数的手法
 // 包括处理读 处理写 处理错误 处理连接4个回调函数
 // fd一般是tcp连接connfd(套接字fd), 或者timerfd(定时器fd)，文件fd
@@ -21,9 +18,8 @@ class Channel {
  public:
     typedef std::function<void()> EventCallBack;
 
-    explicit Channel() = default;
-    explicit Channel(EventLoop* event_loop);
-    Channel(EventLoop* event_loop, int fd);
+    Channel();
+    explicit Channel(int fd);
     ~Channel();
 
     //IO事件的回调函数 EventLoop中调用Loop开始事件循环 会调用Poll得到就绪事件 
@@ -84,13 +80,12 @@ class Channel {
     }
 
     bool update_last_events() {
-        bool is_change = (last_events_ == events_);
+        bool events_changed = (last_events_ == events_);
         last_events_ = events_;
-        return is_change;
+        return events_changed;
     }
 
  private:
-    EventLoop* event_loop_;
     int fd_;            //Channel的fd
     int events_;        //Channel正在监听的事件
     int revents_;       //返回的就绪事件
