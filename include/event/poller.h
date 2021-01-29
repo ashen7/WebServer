@@ -29,9 +29,11 @@ class Poller : utility::NonCopyAble {
     //epoll_wait 等待就绪事件，然后处理就绪事件
     std::vector<std::shared_ptr<Channel>> Poll();
 
-    //注册 修改 删除epoll内核事件表
+    // 注册新描述符(如果传入的超时时间大于0 就给此fd绑定一个定时器 以及绑定http连接)
     void EpollAdd(std::shared_ptr<Channel> channel, int timeout);
+    // 修改描述符状态(如果传入的超时时间大于0 就给此fd绑定一个定时器)
     void EpollMod(std::shared_ptr<Channel> channel, int timeout);
+    // 从epoll中删除描述符
     void EpollDel(std::shared_ptr<Channel> channel);
 
     //添加定时器
@@ -49,7 +51,7 @@ class Poller : utility::NonCopyAble {
     static constexpr int EPOLL_TIMEOUT = 10000;   //epoll wait的超时时间
 
  private:
-    int epoll_fd_;
+    int epoll_fd_;                                                       //epoll的文件描述符
     std::vector<epoll_event> ready_events_;                              //就绪事件
     std::vector<std::shared_ptr<Channel>> ready_channels_;               //就绪fd的channel
     std::vector<std::shared_ptr<http::HttpConnection>> http_connections_;//http连接对象    

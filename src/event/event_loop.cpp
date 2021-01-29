@@ -20,10 +20,11 @@ EventLoop::EventLoop()
       is_calling_pending_functions_(false) {
     //创建poller io复用 
     poller_ = std::make_shared<Poller>();
-    //创建进程间通信event_fd 
-    event_fd_ = CreateEventfd();
     //这个eventloop是属于这个线程id的
     thread_id_ = current_thread::thread_id();
+    //创建进程间通信event_fd 
+    event_fd_ = CreateEventfd();
+    //创建event_fd的channel 用于唤醒
     wakeup_channel_ = std::make_shared<Channel>(event_fd_);
 
     //如果本线程已经拥有一个EventLoop 就不能再拥有了
@@ -84,7 +85,6 @@ void EventLoop::StopLoop() {
         WakeUp();
     }
 }
-
 
 //如果当前线程就是创建此EventLoop的线程 就调用callback 否则就放入等待执行函数区
 void EventLoop::RunInLoop(CallBack&& callback) {

@@ -32,7 +32,7 @@ Poller::Poller() {
 Poller::~Poller() {
 }
 
-// io多路复用 epoll_wait返回就绪事件数
+// io多路复用 epoll_wait返回就绪事件数 
 std::vector<std::shared_ptr<Channel>> Poller::Poll() {
     while (true) {
         //epoll_wait等待就绪事件
@@ -69,7 +69,7 @@ std::vector<std::shared_ptr<Channel>> Poller::Poll() {
     }
 }
 
-// 注册新描述符, 如果传入的超时时间大于0 就给此fd绑定一个定时器 以及绑定http连接
+// 注册新描述符(如果传入的超时时间大于0 就给此fd绑定一个定时器 以及绑定http连接)
 void Poller::EpollAdd(std::shared_ptr<Channel> channel, int timeout) {
     int fd = channel->fd();
     int events = channel->events();
@@ -85,7 +85,7 @@ void Poller::EpollAdd(std::shared_ptr<Channel> channel, int timeout) {
     struct epoll_event event;
     event.data.fd = fd;
     event.events = events;
-    //更新上一次事件
+    //把本次监听的事件赋值为上一次事件
     channel->update_last_events();
     //将channel添加到channel array中
     ready_channels_[fd] = channel;
@@ -97,7 +97,7 @@ void Poller::EpollAdd(std::shared_ptr<Channel> channel, int timeout) {
     }
 }
 
-// 修改描述符状态 如果传入的超时时间大于0 就给此fd绑定一个定时器
+// 修改描述符状态(如果传入的超时时间大于0 就给此fd绑定一个定时器)
 void Poller::EpollMod(std::shared_ptr<Channel> channel, int timeout) {
     int fd = channel->fd();
     int events = channel->events();
@@ -105,12 +105,14 @@ void Poller::EpollMod(std::shared_ptr<Channel> channel, int timeout) {
         AddTimer(channel, timeout);
     }
 
+    //把本次监听的事件赋值为上一次事件, 
+    //如果本次和上次监听事件没变 则不用调用EPOLL_MOD
     if (!channel->update_last_events()) {
         struct epoll_event event;
         event.data.fd = fd;
         event.events = events;
         if (epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, fd, &event) < 0) {
-            perror("EpollMod error");
+            perror("epoll mod error");
             ready_channels_[fd].reset();
         }
     }
@@ -119,14 +121,13 @@ void Poller::EpollMod(std::shared_ptr<Channel> channel, int timeout) {
 // 从epoll中删除描述符
 void Poller::EpollDel(std::shared_ptr<Channel> channel) {
     int fd = channel->fd();
-    int events = channel->events();
+    int events = channel->last_events();
 
     struct epoll_event event;
     event.data.fd = fd;
-    event.events = channel->last_events();
-
+    event.events = events;
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, &event) < 0) {
-        perror("EpollDel error");
+        perror("epoll del error");
     }
     ready_channels_[fd].reset();
     http_connections_[fd].reset();
@@ -134,6 +135,7 @@ void Poller::EpollDel(std::shared_ptr<Channel> channel) {
 
 //添加定时器
 void Poller::AddTimer(std::shared_ptr<Channel> channel, int timeout) {
+    //如果设置了http连接对象 才会添加定时器（比如监听套接字channel就是没有设置http连接对象的）
     auto http_connection = channel->holder();
     if (http_connection) {
         timer_heap_.AddTimer(http_connection, timeout);

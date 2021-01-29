@@ -18,7 +18,7 @@ pthread_once_t MimeType::once_control = PTHREAD_ONCE_INIT;
 std::unordered_map<std::string, std::string> MimeType::mime_map;
 
 //web server的图标favicon
-char favicon[555] = {
+static char favicon[555] = {
     '\x89', 'P',    'N',    'G',    '\xD',  '\xA',  '\x1A', '\xA',  '\x0',
     '\x0',  '\x0',  '\xD',  'I',    'H',    'D',    'R',    '\x0',  '\x0',
     '\x0',  '\x10', '\x0',  '\x0',  '\x0',  '\x10', '\x8',  '\x6',  '\x0',
@@ -148,7 +148,7 @@ void HttpConnection::HandleClose() {
     event_loop_->PollerDel(channel_);
 }
 
-//处理读 
+//处理读   读请求报文数据到read_buffer 解析请求报文 构建响应报文并写入write_buffer
 void HttpConnection::HandleRead() {
     int& events = channel_->events();
     do {
@@ -175,11 +175,12 @@ void HttpConnection::HandleRead() {
             }
         }
 
+        //解析请求行
         if (process_state_ == STATE_PARSE_URI) {
-            UriState flag = this->ParseUri();
-            if (flag == PARSE_URI_AGAIN) {
+            UriState uri_state = ParseUri();
+            if (uri_state == PARSE_URI_AGAIN) {
                 break;
-            } else if (flag == PARSE_URI_ERROR) {
+            } else if (uri_state == PARSE_URI_ERROR) {
                 perror("2");
                 // LOG << "FD = " << connect_fd_ << "," << read_buffer_ << "******";
                 read_buffer_.clear();
@@ -191,42 +192,47 @@ void HttpConnection::HandleRead() {
             }
         }
 
+        //解析请求头
         if (process_state_ == STATE_PARSE_HEADERS) {
-            HeaderState flag = this->ParseHeaders();
-            if (flag == PARSE_HEADER_AGAIN) {
+            HeaderState header_state = ParseHeaders();
+            if (header_state == PARSE_HEADER_AGAIN) {
                 break;
-            } else if (flag == PARSE_HEADER_ERROR) {
+            } else if (header_state == PARSE_HEADER_ERROR) {
                 perror("3");
                 is_error_ = true;
                 HandleError(connect_fd_, 400, "Bad Request");
                 break;
             }
+            //如果是GET方法此时已解析完成 如果是POST方法 继续解析请求体
             if (method_ == METHOD_POST) {
-                // POST方法准备
+                // POST方法
                 process_state_ = STATE_RECV_BODY;
             } else {
                 process_state_ = STATE_RESPONSE;
             }
         }
 
+        //post方法
         if (process_state_ == STATE_RECV_BODY) {
+            //读content_length字段 看请求体有多少字节的数据
             int content_length = -1;
-            if (headers_.find("Content-length") != headers_.end()) {
-                content_length = stoi(headers_["Content-length"]);
+            if (request_headers_.find("Content-length") != request_headers_.end()) {
+                content_length = stoi(request_headers_["Content-length"]);
             } else {
                 is_error_ = true;
                 HandleError(connect_fd_, 400, "Bad Request: Lack of argument (Content-length)");
                 break;
             }
-            if (static_cast<int>(read_buffer_.size()) < content_length) {
+            if (read_buffer_.size() < content_length) {
                 break;
             }
             process_state_ = STATE_RESPONSE;
         }
-
+        
+        //构建响应报文并写入write_buffer
         if (process_state_ == STATE_RESPONSE) {
-            ResponseState flag = this->Response();
-            if (flag == RESPONSE_SUCCESS) {
+            ResponseState response_state = Response();
+            if (response_state == RESPONSE_SUCCESS) {
                 process_state_ = STATE_FINISH;
                 break;
             } else {
@@ -237,13 +243,13 @@ void HttpConnection::HandleRead() {
     } while (false);
 
     if (!is_error_) {
+        //如果成功解析 将响应报文数据发送给客户端
         if (write_buffer_.size() > 0) {
             HandleWrite();
-            // events |= EPOLLOUT;
         }
-        // is_error_ may change
         if (!is_error_ && process_state_ == STATE_FINISH) {
-            this->Reset();
+            //完成后 reset状态置为初始化值
+            Reset();
             if (read_buffer_.size() > 0) {
                 if (connection_state_ != DISCONNECTING) {
                     HandleRead();
@@ -261,7 +267,9 @@ void HttpConnection::HandleRead() {
     }
 }
 
+//处理写   向客户端发送write_buffer中的响应报文数据
 void HttpConnection::HandleWrite() {
+    //如果没有发生错误 并且连接没断开 就把写缓冲区的数据 发送给客户端
     if (!is_error_ && connection_state_ != DISCONNECTED) {
         int& events = channel_->events();
         if (utility::Write(connect_fd_, write_buffer_) < 0) {
@@ -269,91 +277,94 @@ void HttpConnection::HandleWrite() {
             events = 0;
             is_error_ = true;
         }
+        //如果还没有写完 就等待下次写事件就绪接着写
         if (write_buffer_.size() > 0) {
             events |= EPOLLOUT;
         }
     }
 }
 
+//处理连接
 void HttpConnection::HandleConnect() {
     SeperateTimer();
     int& events = channel_->events();
+
     if (!is_error_ && connection_state_ == CONNECTED) {
         if (events != 0) {
             int timeout = DEFAULT_EXPIRE_TIME;
-            if (is_keep_alive_)
+            if (is_keep_alive_) {
                 timeout = DEFAULT_KEEP_ALIVE_TIME;
+            }
             if ((events & EPOLLIN) && (events & EPOLLOUT)) {
-                events = int(0);
+                events = 0;
                 events |= EPOLLOUT;
             }
-            // events |= (EPOLLET | EPOLLONESHOT);
             events |= EPOLLET;
             event_loop_->PollerMod(channel_, timeout);
-
         } else if (is_keep_alive_) {
             events |= (EPOLLIN | EPOLLET);
-            // events |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
             int timeout = DEFAULT_KEEP_ALIVE_TIME;
             event_loop_->PollerMod(channel_, timeout);
         } else {
-            // cout << "close normally" << endl;
-            // event_loop_->shutdown(channel_);
-            // event_loop_->RunInLoop(std::bind(&HttpConnection::HandleClose,
-            // shared_from_this()));
             events |= (EPOLLIN | EPOLLET);
-            // events |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
             int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
             event_loop_->PollerMod(channel_, timeout);
         }
-    } else if (!is_error_ && connection_state_ == DISCONNECTING &&
-               (events & EPOLLOUT)) {
+    } else if (!is_error_ 
+                    && connection_state_ == DISCONNECTING 
+                    && (events & EPOLLOUT)) {
         events = (EPOLLOUT | EPOLLET);
     } else {
-        // cout << "close with errors" << endl;
         event_loop_->RunInLoop(std::bind(&HttpConnection::HandleClose, shared_from_this()));
     }
 }
 
-void HttpConnection::HandleError(int fd, int err_num, std::string short_msg) {
-    short_msg = " " + short_msg;
-    char send_buff[4096];
-    std::string body_buff, header_buff;
-    body_buff += "<html><title>哎~出错了</title>";
-    body_buff += "<body bgcolor=\"ffffff\">";
-    body_buff += std::to_string(err_num) + short_msg;
-    body_buff += "<hr><em> LinYa's Web Server</em>\n</body></html>";
+//处理错误（返回错误信息）
+void HttpConnection::HandleError(int fd, int error_code, std::string error_message) {
+    //写缓冲区
+    char write_buffer[4096];
+    error_message = " " + error_message;
 
-    header_buff += "HTTP/1.1 " + std::to_string(err_num) + short_msg + "\r\n";
-    header_buff += "Content-Type: text/html\r\n";
-    header_buff += "Connection: Close\r\n";
-    header_buff += "Content-Length: " + std::to_string(body_buff.size()) + "\r\n";
-    header_buff += "Server: LinYa's Web Server\r\n";
-    header_buff += "\r\n";
+    //响应体
+    std::string response_body;
+    response_body += "<html><title>请求出错了</title>";
+    response_body += "<body bgcolor=\"ffffff\">";
+    response_body += std::to_string(error_code) + error_message;
+    response_body += "<hr><em> AshenQAQ Web Server</em>\n</body></html>";
+
+    //响应头
+    std::string response_header;
+    response_header += "HTTP/1.1 " + std::to_string(error_code) + error_message + "\r\n";
+    response_header += "Content-Type: text/html\r\n";
+    response_header += "Connection: Close\r\n";
+    response_header += "Content-Length: " + std::to_string(response_body.size()) + "\r\n";
+    response_header += "Server: AshenQAQ Web Server\r\n";
+    response_header += "\r\n";
     
-    // 错误处理不考虑writen不完的情况
-    sprintf(send_buff, "%s", header_buff.c_str());
-    utility::Write(fd, send_buff, strlen(send_buff));
-    sprintf(send_buff, "%s", body_buff.c_str());
-    utility::Write(fd, send_buff, strlen(send_buff));
+    // 错误处理不考虑write不完的情况
+    sprintf(write_buffer, "%s", response_header.c_str());
+    utility::Write(fd, write_buffer, strlen(write_buffer));
+    sprintf(write_buffer, "%s", response_body.c_str());
+    utility::Write(fd, write_buffer, strlen(write_buffer));
 }
 
+//解析请求行
 HttpConnection::UriState HttpConnection::ParseUri() {
-    std::string& str = read_buffer_;
-    std::string cop = str;
+    std::string& request_data = read_buffer_;
+    std::string cop = request_data;
     // 读到完整的请求行再开始解析请求
-    size_t pos = str.find('\r', cur_read_pos_);
+    size_t pos = request_data.find('\r', cur_read_pos_);
     if (pos < 0) {
         return PARSE_URI_AGAIN;
     }
     // 去掉请求行所占的空间，节省空间
-    std::string request_line = str.substr(0, pos);
-    if (str.size() > pos + 1) {
-        str = str.substr(pos + 1);
+    std::string request_line = request_data.substr(0, pos);
+    if (request_data.size() > pos + 1) {
+        request_data = request_data.substr(pos + 1);
     } else {
-        str.clear();
+        request_data.clear();
     }
-    // Method
+    // 请求方法
     int get_pos = request_line.find("GET");
     int post_pos = request_line.find("POST");
     int head_pos = request_line.find("HEAD");
@@ -371,28 +382,32 @@ HttpConnection::UriState HttpConnection::ParseUri() {
         return PARSE_URI_ERROR;
     }
 
-    // filename
+    // 请求文件名
     pos = request_line.find("/", pos);
     if (pos < 0) {
+        //没找到 就默认访问主页，http版本默认1.1
         file_name_ = "index.html";
         version_ = HTTP_11;
         return PARSE_URI_SUCCESS;
     } else {
-        size_t _pos = request_line.find(' ', pos);
-        if (_pos < 0) {
+        //找到了文件名 再找空格
+        size_t pos2 = request_line.find(' ', pos);
+        if (pos2 < 0) {
             return PARSE_URI_ERROR;
         } else {
-            if (_pos - pos > 1) {
-                file_name_ = request_line.substr(pos + 1, _pos - pos - 1);
-                size_t __pos = file_name_.find('?');
-                if (__pos >= 0) {
-                    file_name_ = file_name_.substr(0, __pos);
+            //找到了空格 
+            if (pos2 - pos > 1) {
+                //
+                file_name_ = request_line.substr(pos + 1, pos2 - pos - 1);
+                size_t pos3 = file_name_.find('?');
+                if (pos3 >= 0) {
+                    file_name_ = file_name_.substr(0, pos3);
                 }
             } else {
                 file_name_ = "index.html";
             }
         }
-        pos = _pos;
+        pos = pos2;
     }
     
     // cout << "file_name_: " << file_name_ << endl;
@@ -404,10 +419,10 @@ HttpConnection::UriState HttpConnection::ParseUri() {
         if (request_line.size() - pos <= 3) {
             return PARSE_URI_ERROR;
         } else {
-            std::string ver = request_line.substr(pos + 1, 3);
-            if (ver == "1.0") {
+            std::string version = request_line.substr(pos + 1, 3);
+            if (version == "1.0") {
                 version_ = HTTP_10;
-            } else if (ver == "1.1") {
+            } else if (version == "1.1") {
                 version_ = HTTP_11;
             } else {
                 return PARSE_URI_ERROR;
@@ -418,17 +433,18 @@ HttpConnection::UriState HttpConnection::ParseUri() {
     return PARSE_URI_SUCCESS;
 }
 
+//解析请求头
 HttpConnection::HeaderState HttpConnection::ParseHeaders() {
-    std::string& str = read_buffer_;
+    std::string& request_data = read_buffer_;
     int key_start = -1, key_end = -1, value_start = -1, value_end = -1;
     int now_read_line_begin = 0;
     bool is_finish = false;
     size_t i = 0;
 
-    for (; i < str.size() && !is_finish; ++i) {
+    for (; i < request_data.size() && !is_finish; ++i) {
         switch (parse_state_) {
             case START: {
-                if (str[i] == '\n' || str[i] == '\r') {
+                if (request_data[i] == '\n' || request_data[i] == '\r') {
                     break;
                 }
                 parse_state_ = KEY;
@@ -437,19 +453,19 @@ HttpConnection::HeaderState HttpConnection::ParseHeaders() {
                 break;
             }
             case KEY: {
-                if (str[i] == ':') {
+                if (request_data[i] == ':') {
                     key_end = i;
                     if (key_end - key_start <= 0) {
                         return PARSE_HEADER_ERROR;
                     }
                     parse_state_ = COLON;
-                } else if (str[i] == '\n' || str[i] == '\r') {
+                } else if (request_data[i] == '\n' || request_data[i] == '\r') {
                     return PARSE_HEADER_ERROR;
                 }
                 break;
             }
             case COLON: {
-                if (str[i] == ' ') {
+                if (request_data[i] == ' ') {
                     parse_state_ = SPACES_AFTER_COLON;
                 } else {
                     return PARSE_HEADER_ERROR;
@@ -462,7 +478,7 @@ HttpConnection::HeaderState HttpConnection::ParseHeaders() {
                 break;
             }
             case VALUE: {
-                if (str[i] == '\r') {
+                if (request_data[i] == '\r') {
                     parse_state_ = CR;
                     value_end = i;
                     if (value_end - value_start <= 0)
@@ -472,12 +488,11 @@ HttpConnection::HeaderState HttpConnection::ParseHeaders() {
                 break;
             }
             case CR: {
-                if (str[i] == '\n') {
+                if (request_data[i] == '\n') {
                     parse_state_ = LF;
-                    std::string key(str.begin() + key_start, str.begin() + key_end);
-                    std::string value(str.begin() + value_start,
-                                 str.begin() + value_end);
-                    headers_[key] = value;
+                    std::string key(request_data.begin() + key_start, request_data.begin() + key_end);
+                    std::string value(request_data.begin() + value_start, request_data.begin() + value_end);
+                    request_headers_[key] = value;
                     now_read_line_begin = i;
                 } else {
                     return PARSE_HEADER_ERROR;
@@ -485,7 +500,7 @@ HttpConnection::HeaderState HttpConnection::ParseHeaders() {
                 break;
             }
             case LF: {
-                if (str[i] == '\r') {
+                if (request_data[i] == '\r') {
                     parse_state_ = END_CR;
                 } else {
                     key_start = i;
@@ -494,7 +509,7 @@ HttpConnection::HeaderState HttpConnection::ParseHeaders() {
                 break;
             }
             case END_CR: {
-                if (str[i] == '\n') {
+                if (request_data[i] == '\n') {
                     parse_state_ = END_LF;
                 } else {
                     return PARSE_HEADER_ERROR;
@@ -511,59 +526,37 @@ HttpConnection::HeaderState HttpConnection::ParseHeaders() {
     }
 
     if (parse_state_ == END_LF) {
-        str = str.substr(i);
+        request_data = request_data.substr(i);
         return PARSE_HEADER_SUCCESS;
     }
-    str = str.substr(now_read_line_begin);
+    request_data = request_data.substr(now_read_line_begin);
     
     return PARSE_HEADER_AGAIN;
 }
 
+//构建响应报文并写入write_buffer
 HttpConnection::ResponseState HttpConnection::Response() {
     if (method_ == METHOD_POST) {
-        // std::string header;
-        // header += std::string("HTTP/1.1 200 OK\r\n");
-        // if (headers_.find("Connection") != headers_.end() 
-        //         && headers_["Connection"] == "Keep-Alive") {
-        //     is_keep_alive_ = true;
-        //     header += std::string("Connection: Keep-Alive\r\n") + 
-        //                           "Keep-Alive: timeout=" + 
-        //                           std::to_string(DEFAULT_KEEP_ALIVE_TIME) + 
-        //                           "\r\n";
-        // }
 
-        // int length = stoi(headers_["Content-length"]);
-        // std::vector<char> data(read_buffer_.begin(), read_buffer_.begin() + length);
-        // cv::Mat src = cv::imdecode(data, CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
-        // //imwrite("receive.bmp", src);
-        // cv::Mat res = stitch(src);
-        // std::vector<uchar> data_encode;
-        // cv::imencode(".png", res, data_encode);
-        // header += std::string("Content-length: ") +
-        //           std::to_string(data_encode.size()) +
-        //           "\r\n\r\n";
-        // write_buffer_ += header + std::string(data_encode.begin(),
-        // data_encode.end()); read_buffer_ = read_buffer_.substr(length); 
-
-        // return RESPONSE_SUCCESS;
     } else if (method_ == METHOD_GET || method_ == METHOD_HEAD) {
-        std::string header;
-        header += "HTTP/1.1 200 OK\r\n";
-        if (headers_.find("Connection") != headers_.end() 
-                && (headers_["Connection"] == "Keep-Alive" 
-                || headers_["Connection"] == "keep-alive")) {
+        std::string response_header;
+        response_header += "HTTP/1.1 200 OK\r\n";
+        if (request_headers_.find("Connection") != request_headers_.end() 
+                && (request_headers_["Connection"] == "Keep-Alive" 
+                || request_headers_["Connection"] == "keep-alive")) {
             is_keep_alive_ = true;
-            header += std::string("Connection: Keep-Alive\r\n") +
-                             "Keep-Alive: timeout=" + 
-                             std::to_string(DEFAULT_KEEP_ALIVE_TIME) +
-                             "\r\n";
+            response_header += std::string("Connection: Keep-Alive\r\n") +
+                                           "Keep-Alive: timeout=" + 
+                                            std::to_string(DEFAULT_KEEP_ALIVE_TIME) +
+                                            "\r\n";
         }
-        int dot_pos = file_name_.find('.');
+
+        int file_type_pos = file_name_.find('.');
         std::string file_type;
-        if (dot_pos < 0) {
+        if (file_type_pos < 0) {
             file_type = MimeType::get_mime("default");
         } else {
-            file_type = MimeType::get_mime(file_name_.substr(dot_pos));
+            file_type = MimeType::get_mime(file_name_.substr(file_type_pos));
         }
 
         // echo test
@@ -571,72 +564,81 @@ HttpConnection::ResponseState HttpConnection::Response() {
             write_buffer_ = "HTTP/1.1 200 OK\r\nContent-type: text/plain\r\n\r\nHello World";
             return RESPONSE_SUCCESS;
         }
+        // 如果请求图标 把请求头+图标数据(请求体)写入write_buffer
         if (file_name_ == "favicon.ico") {
-            header += "Content-Type: image/png\r\n";
-            header += "Content-Length: " + std::to_string(sizeof(favicon)) + "\r\n";
-            header += "Server: LinYa's Web Server\r\n";
-
-            header += "\r\n";
-            write_buffer_ += header;
+            response_header += "Content-Type: image/png\r\n";
+            response_header += "Content-Length: " + std::to_string(sizeof(favicon)) + "\r\n";
+            response_header += "Server: AshenQAQ Web Server\r\n";
+            response_header += "\r\n";
+            write_buffer_ += response_header;
             write_buffer_ += std::string(favicon, favicon + sizeof(favicon));
             return RESPONSE_SUCCESS;
         }
 
-        struct stat sbuf;
-        if (stat(file_name_.c_str(), &sbuf) < 0) {
-            header.clear();
-            HandleError(connect_fd_, 404, "Not Found!");
+        //查看请求的文件权限
+        struct stat file_stat;
+        //请求的文件没有权限返回403
+        if (stat(file_name_.c_str(), &file_stat) < 0) {
+            response_header.clear();
+            HandleError(connect_fd_, 403, "Forbidden!");
             return RESPONSE_ERROR;
         }
-        header += "Content-Type: " + file_type + "\r\n";
-        header += "Content-Length: " + std::to_string(sbuf.st_size) + "\r\n";
-        header += "Server: LinYa's Web Server\r\n";
-        // 头部结束
-        header += "\r\n";
-        write_buffer_ += header;
+        response_header += "Content-Type: " + file_type + "\r\n";
+        response_header += "Content-Length: " + std::to_string(file_stat.st_size) + "\r\n";
+        response_header += "Server: AshenQAQ Web Server\r\n";
+        // 请求头后的空行
+        response_header += "\r\n";
+        write_buffer_ += response_header;
 
         if (method_ == METHOD_HEAD) {
             return RESPONSE_SUCCESS;
         }
 
-        int src_fd = open(file_name_.c_str(), O_RDONLY, 0);
-        if (src_fd < 0) {
+        //请求的文件不存在返回404
+        int file_fd = open(file_name_.c_str(), O_RDONLY, 0);
+        if (file_fd < 0) {
             write_buffer_.clear();
             HandleError(connect_fd_, 404, "Not Found!");
             return RESPONSE_ERROR;
         }
-
-        void* mmap_address = mmap(NULL, sbuf.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0);
-        close(src_fd);
+        
+        //将文件内容通过mmap映射到一块共享内存中
+        void* mmap_address = mmap(NULL, file_stat.st_size, PROT_READ, 
+                                  MAP_PRIVATE, file_fd, 0);
+        close(file_fd);
+        //映射共享内存失败 也返回404
         if (mmap_address == (void*)-1) {
-            munmap(mmap_address, sbuf.st_size);
+            munmap(mmap_address, file_stat.st_size);
             write_buffer_.clear();
             HandleError(connect_fd_, 404, "Not Found!");
             return RESPONSE_ERROR;
         }
-        char* src_addr = static_cast<char*>(mmap_address);
-        write_buffer_ += std::string(src_addr, src_addr + sbuf.st_size);
-        munmap(mmap_address, sbuf.st_size);
+        
+        char* filer_address = static_cast<char*>(mmap_address);
+        write_buffer_ += std::string(filer_address, filer_address + file_stat.st_size);
+        munmap(mmap_address, file_stat.st_size);
         return RESPONSE_SUCCESS;
     }
 
     return RESPONSE_ERROR;
 }
 
+//reset状态
 void HttpConnection::Reset() {
     file_name_.clear();
     path_.clear();
     cur_read_pos_ = 0;
     process_state_ = STATE_PARSE_URI;
     parse_state_ = START;
-    headers_.clear();
+    request_headers_.clear();
     if (timer_.lock()) {
-        std::shared_ptr<timer::Timer> my_timer(timer_.lock());
-        my_timer->Clear();
+        std::shared_ptr<timer::Timer> timer(timer_.lock());
+        timer->Clear();
         timer_.reset();
     }
 }
 
+//删除定时器
 void HttpConnection::SeperateTimer() {
     if (timer_.lock()) {
         std::shared_ptr<timer::Timer> timer(timer_.lock());

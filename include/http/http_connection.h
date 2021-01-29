@@ -106,7 +106,7 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
     ~HttpConnection();
 
     void AddNewEvent();  //给fd注册默认事件
-    void HandleClose();      
+    void HandleClose();  //处理关闭 删除fd注册的事件
     void Reset();
     void SeperateTimer();
     
@@ -118,23 +118,19 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
         return channel_;
     }
 
-    event::EventLoop* event_loop() {
-        return event_loop_;
-    }
-
  private:
-    void HandleRead();      //处理读
-    void HandleWrite();     //处理写
-    void HandleConnect();   //处理连接
-    void HandleError(int fd, int err_num, std::string short_msg);   //处理错误
+    void HandleRead();      //处理读   读请求报文数据到read_buffer 解析请求报文 构建响应报文并写入write_buffer
+    void HandleWrite();     //处理写   向客户端发送write_buffer中的响应报文数据
+    void HandleConnect();   //处理连接 
+    void HandleError(int fd, int error_code, std::string error_message); //处理错误（返回错误信息）
 
     UriState ParseUri();          //解析uri（请求行）
-    HeaderState ParseHeaders();   //解析请求头
-    ResponseState Response();     //构建响应报文
+    HeaderState ParseHeaders();   //解析请求头, post方法就再解析请求体
+    ResponseState Response();     //构建响应报文并写入write_buffer
 
  private:
     static constexpr int DEFAULT_EVENT = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    static constexpr int DEFAULT_EXPIRE_TIME = 2000;               // ms
+    static constexpr int DEFAULT_EXPIRE_TIME = 2 * 1000;           // ms
     static constexpr int DEFAULT_KEEP_ALIVE_TIME = 5 * 60 * 1000;  // ms
 
     int connect_fd_;                             //连接套接字fd
@@ -143,6 +139,7 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
     std::weak_ptr<timer::Timer> timer_;          //定时器
     std::string read_buffer_;                    //读缓冲区
     std::string write_buffer_;                   //写缓冲区
+    int cur_read_pos_;                           //当前读的位置
 
     ProcessState process_state_;                 //处理状态
     ConnectionState connection_state_;           //服务器和客户端的连接状态
@@ -152,8 +149,7 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
     
     std::string file_name_;                      //请求文件名
     std::string path_;                           //请求路径
-    int cur_read_pos_;                           //当前读的位置
-    std::map<std::string, std::string> headers_; //头
+    std::map<std::string, std::string> request_headers_; //请求头
     bool is_error_;                              //是否发生错误
     bool is_keep_alive_;                         //是否长连接
 };
