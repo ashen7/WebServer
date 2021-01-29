@@ -128,15 +128,15 @@ HttpConnection::HttpConnection(event::EventLoop* event_loop, int connect_fd)
     //给连接套接字绑定读、写、连接的回调函数
     channel_->set_read_handler(std::bind(&HttpConnection::HandleRead, this));
     channel_->set_write_handler(std::bind(&HttpConnection::HandleWrite, this));
-    channel_->set_connect_handler(std::bind(&HttpConnection::HandleConnect, this));
+    channel_->set_update_handler(std::bind(&HttpConnection::HandleUpdate, this));
 }
 
 HttpConnection::~HttpConnection() {
     close(connect_fd_);
 }
 
-//给fd注册默认事件
-void HttpConnection::AddNewEvent() {
+//给fd注册默认事件, 这里给了超时时间，所以会绑定定时器和http对象
+void HttpConnection::PollerAdd() {
     channel_->set_events(DEFAULT_EVENT);
     event_loop_->PollerAdd(channel_, DEFAULT_EXPIRE_TIME);
 }
@@ -284,8 +284,8 @@ void HttpConnection::HandleWrite() {
     }
 }
 
-//处理连接
-void HttpConnection::HandleConnect() {
+//处理更新事件回调 
+void HttpConnection::HandleUpdate() {
     SeperateTimer();
     int& events = channel_->events();
 

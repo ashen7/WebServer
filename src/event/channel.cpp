@@ -50,8 +50,8 @@ void Channel::HandleEvents() {
     if (revents_ & EPOLLOUT) {
         HandleWrite();
     }
-    //不管就绪了什么事件 最后都要处理连接事件
-    HandleConnect();
+    //最后都会处理更新监听事件(EpollMod)
+    HandleUpdate();
 }
 
 //处理读事件的回调函数
@@ -68,10 +68,10 @@ void Channel::HandleWrite() {
     }
 }
 
-//处理连接事件的回调函数
-void Channel::HandleConnect() {
-    if (connect_handler_) {
-        connect_handler_();
+//处理更新事件的回调
+void Channel::HandleUpdate() {
+    if (update_handler_) {
+        update_handler_();
     }
 }
 

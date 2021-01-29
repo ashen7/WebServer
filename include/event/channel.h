@@ -25,10 +25,10 @@ class Channel {
     //IO事件的回调函数 EventLoop中调用Loop开始事件循环 会调用Poll得到就绪事件 
     //然后依次调用此函数处理就绪事件
     void HandleEvents();      
-    void HandleRead();
-    void HandleWrite();
-    void HandleConnect();
-    void HandleError();
+    void HandleRead();       //处理读事件的回调
+    void HandleWrite();      //处理写事件的回调
+    void HandleUpdate();     //处理更新事件的回调
+    void HandleError();      //处理错误事件的回调
 
     int fd() const {
         return fd_;
@@ -48,16 +48,16 @@ class Channel {
         holder_ = holder;
     }
 
-    void set_connect_handler(EventCallBack&& connect_handler) {
-        connect_handler_ = connect_handler;
-    }
-
     void set_read_handler(EventCallBack&& read_handler) {
         read_handler_ = read_handler;
     }
 
     void set_write_handler(EventCallBack&& write_handler) {
         write_handler_ = write_handler;
+    }
+
+    void set_update_handler(EventCallBack&& update_handler) {
+        update_handler_ = update_handler;
     }
 
     void set_error_handler(EventCallBack&& error_handler) {
@@ -99,7 +99,7 @@ class Channel {
 
     EventCallBack read_handler_;
     EventCallBack write_handler_;
-    EventCallBack connect_handler_;
+    EventCallBack update_handler_;
     EventCallBack error_handler_;
 };
 

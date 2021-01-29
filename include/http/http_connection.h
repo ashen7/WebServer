@@ -105,7 +105,7 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
     HttpConnection(event::EventLoop* event_loop, int connect_fd);
     ~HttpConnection();
 
-    void AddNewEvent();  //给fd注册默认事件
+    void PollerAdd();    //给fd注册默认事件(可读 | ET触发 | ONESHOT即只执行一次，下次epoll_wait不会触发了)
     void HandleClose();  //处理关闭 删除fd注册的事件
     void Reset();
     void SeperateTimer();
@@ -119,9 +119,9 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
     }
 
  private:
-    void HandleRead();      //处理读   读请求报文数据到read_buffer 解析请求报文 构建响应报文并写入write_buffer
-    void HandleWrite();     //处理写   向客户端发送write_buffer中的响应报文数据
-    void HandleConnect();   //处理连接 
+    void HandleRead();      //处理读回调   读请求报文数据到read_buffer 解析请求报文 构建响应报文并写入write_buffer
+    void HandleWrite();     //处理写回调   向客户端发送write_buffer中的响应报文数据
+    void HandleUpdate();    //处理更新事件回调 
     void HandleError(int fd, int error_code, std::string error_message); //处理错误（返回错误信息）
 
     UriState ParseUri();          //解析uri（请求行）
