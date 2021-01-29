@@ -1,4 +1,4 @@
-#include "http/http.h"
+#include "http/http_connection.h"
 
 #include <string.h>
 #include <fcntl.h>
@@ -113,7 +113,7 @@ std::string MimeType::get_mime(const std::string& type) {
 }
 
 //http类
-Http::Http(event::EventLoop* event_loop, int connect_fd)
+HttpConnection::HttpConnection(event::EventLoop* event_loop, int connect_fd)
     : event_loop_(event_loop),
       channel_(new event::Channel(event_loop, connect_fd)),
       connect_fd_(connect_fd),
@@ -126,30 +126,30 @@ Http::Http(event::EventLoop* event_loop, int connect_fd)
       is_error_(false),
       is_keep_alive_(false) {
     //给连接套接字绑定读、写、连接的回调函数
-    channel_->set_read_handler(std::bind(&Http::HandleRead, this));
-    channel_->set_write_handler(std::bind(&Http::HandleWrite, this));
-    channel_->set_connect_handler(std::bind(&Http::HandleConnect, this));
+    channel_->set_read_handler(std::bind(&HttpConnection::HandleRead, this));
+    channel_->set_write_handler(std::bind(&HttpConnection::HandleWrite, this));
+    channel_->set_connect_handler(std::bind(&HttpConnection::HandleConnect, this));
 }
 
-Http::~Http() {
+HttpConnection::~HttpConnection() {
     close(connect_fd_);
 }
 
 //给fd注册默认事件
-void Http::AddNewEvent() {
+void HttpConnection::AddNewEvent() {
     channel_->set_events(DEFAULT_EVENT);
     event_loop_->PollerAdd(channel_, DEFAULT_EXPIRE_TIME);
 }
 
 //处理关闭 删除fd注册的事件
-void Http::HandleClose() {
+void HttpConnection::HandleClose() {
     connection_state_ = DISCONNECTED;
-    std::shared_ptr<Http> guard(shared_from_this());
+    std::shared_ptr<HttpConnection> guard(shared_from_this());
     event_loop_->PollerDel(channel_);
 }
 
 //处理读 
-void Http::HandleRead() {
+void HttpConnection::HandleRead() {
     int& events = channel_->events();
     do {
         bool is_read_zero_bytes = false;
@@ -260,7 +260,7 @@ void Http::HandleRead() {
     }
 }
 
-void Http::HandleWrite() {
+void HttpConnection::HandleWrite() {
     if (!is_error_ && connection_state_ != DISCONNECTED) {
         int& events = channel_->events();
         if (utility::Write(connect_fd_, write_buffer_) < 0) {
@@ -274,7 +274,7 @@ void Http::HandleWrite() {
     }
 }
 
-void Http::HandleConnect() {
+void HttpConnection::HandleConnect() {
     SeperateTimer();
     int& events = channel_->events();
     if (!is_error_ && connection_state_ == CONNECTED) {
@@ -298,7 +298,7 @@ void Http::HandleConnect() {
         } else {
             // cout << "close normally" << endl;
             // event_loop_->shutdown(channel_);
-            // event_loop_->RunInLoop(std::bind(&Http::HandleClose,
+            // event_loop_->RunInLoop(std::bind(&HttpConnection::HandleClose,
             // shared_from_this()));
             events |= (EPOLLIN | EPOLLET);
             // events |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
@@ -310,11 +310,11 @@ void Http::HandleConnect() {
         events = (EPOLLOUT | EPOLLET);
     } else {
         // cout << "close with errors" << endl;
-        event_loop_->RunInLoop(std::bind(&Http::HandleClose, shared_from_this()));
+        event_loop_->RunInLoop(std::bind(&HttpConnection::HandleClose, shared_from_this()));
     }
 }
 
-void Http::HandleError(int fd, int err_num, std::string short_msg) {
+void HttpConnection::HandleError(int fd, int err_num, std::string short_msg) {
     short_msg = " " + short_msg;
     char send_buff[4096];
     std::string body_buff, header_buff;
@@ -337,7 +337,7 @@ void Http::HandleError(int fd, int err_num, std::string short_msg) {
     utility::Write(fd, send_buff, strlen(send_buff));
 }
 
-Http::UriState Http::ParseUri() {
+HttpConnection::UriState HttpConnection::ParseUri() {
     std::string& str = read_buffer_;
     std::string cop = str;
     // 读到完整的请求行再开始解析请求
@@ -417,7 +417,7 @@ Http::UriState Http::ParseUri() {
     return PARSE_URI_SUCCESS;
 }
 
-Http::HeaderState Http::ParseHeaders() {
+HttpConnection::HeaderState HttpConnection::ParseHeaders() {
     std::string& str = read_buffer_;
     int key_start = -1, key_end = -1, value_start = -1, value_end = -1;
     int now_read_line_begin = 0;
@@ -518,7 +518,7 @@ Http::HeaderState Http::ParseHeaders() {
     return PARSE_HEADER_AGAIN;
 }
 
-Http::ResponseState Http::Response() {
+HttpConnection::ResponseState HttpConnection::Response() {
     if (method_ == METHOD_POST) {
         // std::string header;
         // header += std::string("HTTP/1.1 200 OK\r\n");
@@ -572,12 +572,12 @@ Http::ResponseState Http::Response() {
         }
         if (file_name_ == "favicon.ico") {
             header += "Content-Type: image/png\r\n";
-            header += "Content-Length: " + std::to_string(sizeof favicon) + "\r\n";
+            header += "Content-Length: " + std::to_string(sizeof(favicon)) + "\r\n";
             header += "Server: LinYa's Web Server\r\n";
 
             header += "\r\n";
             write_buffer_ += header;
-            write_buffer_ += std::string(favicon, favicon + sizeof favicon);
+            write_buffer_ += std::string(favicon, favicon + sizeof(favicon));
             return RESPONSE_SUCCESS;
         }
 
@@ -622,7 +622,7 @@ Http::ResponseState Http::Response() {
     return RESPONSE_ERROR;
 }
 
-void Http::Reset() {
+void HttpConnection::Reset() {
     file_name_.clear();
     path_.clear();
     cur_read_pos_ = 0;
@@ -636,7 +636,7 @@ void Http::Reset() {
     }
 }
 
-void Http::SeperateTimer() {
+void HttpConnection::SeperateTimer() {
     if (timer_.lock()) {
         std::shared_ptr<timer::Timer> timer(timer_.lock());
         timer->Clear();

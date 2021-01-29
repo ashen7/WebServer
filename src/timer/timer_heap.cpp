@@ -2,14 +2,14 @@
 
 #include <memory>
 
-#include "http/http.h"
+#include "http/http_connection.h"
 
 namespace timer {
 //向小根堆中添加定时器
-void TimerHeap::AddTimer(std::shared_ptr<http::Http> http, int timeout) {
-    auto timer = std::make_shared<Timer>(http, timeout);
+void TimerHeap::AddTimer(std::shared_ptr<http::HttpConnection> http_connection, int timeout) {
+    auto timer = std::make_shared<Timer>(http_connection, timeout);
     timer_heap_.push(timer);
-    http->set_timer(timer);
+    http_connection->set_timer(timer);
 }
 
 //处理到期事件 如果定时器被删除或者已经到期 就从小根堆中删除

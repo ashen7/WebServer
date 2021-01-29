@@ -5,18 +5,16 @@
 
 #include <memory>
 
-#include "utility/noncopyable.h"
-
 //类的前置声明
 namespace http {
-class Http;
-}
+class HttpConnection;
+}  // namespace http
 
 namespace timer {
 //定时器类
 class Timer {
  public:
-    Timer(std::shared_ptr<http::Http> http, int timeout);
+    Timer(std::shared_ptr<http::HttpConnection> http, int timeout);
     //拷贝构造
     Timer(Timer& timer);
     ~Timer();
@@ -39,7 +37,7 @@ class Timer {
     }
 
  private:
-    std::shared_ptr<http::Http> http_;
+    std::shared_ptr<http::HttpConnection> http_connection_;
     int expire_time_;
     bool is_deleted_;
 };

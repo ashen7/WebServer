@@ -9,15 +9,17 @@
 
 #include "utility/noncopyable.h"
 
-namespace timer {
 //类的前置声明
-class http::Http;
+namespace http {
+class HttpConnection;
+}  // namespace http
 
-//定时器比较仿函数 
+namespace timer {
+//定时器比较仿函数 升序
 struct TimerCompare {
-    bool operator()(const std::shared_ptr<Timer>& a_timer,
-                    const std::shared_ptr<Timer>& b_timer) const {
-        return a_timer->expire_time() > b_timer->expire_time();
+    bool operator()(const std::shared_ptr<Timer>& a,
+                    const std::shared_ptr<Timer>& b) const {
+        return a->expire_time() > b->expire_time();
     }
 };
 
@@ -30,7 +32,7 @@ class TimerHeap : utility::NonCopyAble {
     }
 
     //添加定时器 将其添加到小根堆中
-    void AddTimer(std::shared_ptr<http::Http> http, int timeout);
+    void AddTimer(std::shared_ptr<http::HttpConnection> http_connection, int timeout);
     //处理到期事件 如果定时器被删除或者已经到期 就从小根堆中删除
     void HandleExpireEvent();
 

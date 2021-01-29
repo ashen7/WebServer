@@ -6,12 +6,12 @@
 #include <memory>
 #include <queue>
 
-#include "http/http.h"
+#include "http/http_connection.h"
 
 namespace timer {
 
-Timer::Timer(std::shared_ptr<http::Http> http, int timeout)
-    : http_(http),
+Timer::Timer(std::shared_ptr<http::HttpConnection> http_connection, int timeout)
+    : http_connection_(http_connection),
       is_deleted_(false) {
     // 以毫秒计算 到期时间 = 当前时间 + 超时时间 
     struct timeval now;
@@ -21,14 +21,14 @@ Timer::Timer(std::shared_ptr<http::Http> http, int timeout)
 
 //拷贝构造函数
 Timer::Timer(Timer& timer)
-    : http_(timer.http_), 
+    : http_connection_(timer.http_connection_), 
       expire_time_(0) {
 }
 
 //如果http没有释放 就调用Close关闭
 Timer::~Timer() {
-    if (http_) {
-        http_->HandleClose();
+    if (http_connection_) {
+        http_connection_->HandleClose();
     }
 }
 
@@ -54,7 +54,7 @@ bool Timer::is_expired() {
 
 //释放http
 void Timer::Clear() {
-    http_.reset();
+    http_connection_.reset();
     is_deleted_ = true;
 }
 

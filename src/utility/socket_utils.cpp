@@ -14,7 +14,7 @@ namespace utility {
 //最大buffer size
 const int MAX_BUFFER_SIZE = 4096;
 
-//设置非阻塞套接字
+//设置NIO非阻塞套接字 read时不管是否读到数据 都直接返回，如果是阻塞式，就会等待直到读完数据或超时返回
 int SetSocketNonBlocking(int fd) {
     int old_flag = fcntl(fd, F_GETFL, 0);
     if (old_flag == -1) {
@@ -29,13 +29,15 @@ int SetSocketNonBlocking(int fd) {
     return 0;
 }
 
-//设置tcp算法nodelay
+//Nagle算法通过减少需要传输的数据包来优化网络（也就是尽可能发送一次发送大块数据），在内核中 数据包的发送接收都会先缓存
+//启动TCP_NODELAY就禁用了Nagle算法，应用于延时敏感型任务（要求实时性，传输数据量小）
+//TCP默认应用Nagle算法,数据只有在写缓存累计到一定量时(也就是多次写)，才会被发送出去 明星提高了网络利用率，但是增加了延时
 void SetSocketNoDelay(int fd) {
     int enable = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void*)&enable, sizeof(enable));
 }
 
-//优雅关闭套接字
+//优雅关闭套接字 也就是套接字在close的时候是否等待缓冲区发送完成
 void SetSocketNoLinger(int fd) {
     struct linger linger_struct;
     linger_struct.l_onoff = 1;
@@ -43,12 +45,14 @@ void SetSocketNoLinger(int fd) {
     setsockopt(fd, SOL_SOCKET, SO_LINGER, (const char*)&linger_struct, sizeof(linger_struct));
 }
 
-//关闭套接字
+//shutdown只关闭了连接 close则关闭了套接字
+//shutdown会等输出缓冲区中的数据传输完毕再发送FIN报文段 而close则直接关闭 将会丢失输出缓冲区的内容
 void ShutDownWR(int fd) {
+    //SHUT_WR断开输出流 
     shutdown(fd, SHUT_WR);
 }
 
-//处理管道信号
+//注册处理管道信号的回调 对其信号屏蔽
 void HandlePipeSignal() {
     struct sigaction signal_action;
     memset(&signal_action, '\0', sizeof(signal_action));
@@ -82,8 +86,11 @@ int SocketListen(int port) {
     // 绑定服务器的ip和端口
     struct sockaddr_in server_addr;
     bzero((char*)&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    //IPv4协议
+    server_addr.sin_family = AF_INET;                   
+    //0.0.0.0(也就是本机所有ip地址) 如果一个主机有多个网卡 每个网卡都连接一个网络 就有多个ip了 这里可以都绑定
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);  
+    //主机字节序转网络字节序  
     server_addr.sin_port = htons((unsigned short)port);
     if (bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
         close(listen_fd);
@@ -117,6 +124,7 @@ int Read(int fd, void* read_buffer, int size) {
             if (errno == EINTR) {
                 read_bytes = 0;
             } else if (errno == EAGAIN) {
+                //EAGAIN表明数据读完了 
                 return read_sum_bytes;
             } else {
                 return -1;
@@ -139,12 +147,14 @@ int Read(int fd, std::string& read_buffer, bool& is_read_zero_bytes) {
     int read_sum_bytes = 0;
 
     while (true) {
+        //每次都读到这个buffer里去
         char buffer[MAX_BUFFER_SIZE];
         if ((read_bytes = read(fd, buffer, MAX_BUFFER_SIZE)) < 0) {
             //EINTR是中断引起的 所以重新读就行
             if (errno == EINTR) {
                 continue;
             } else if (errno == EAGAIN) {
+                //EAGAIN表明数据读完了 
                 return read_sum_bytes;
             } else {
                 perror("read error");
@@ -174,6 +184,7 @@ int Read(int fd, std::string& read_buffer) {
             if (errno == EINTR) {
                 continue;
             } else if (errno == EAGAIN) {
+                //EAGAIN表明数据读完了 
                 return read_sum_bytes;
             } else {
                 perror("read error");
@@ -204,6 +215,7 @@ int Write(int fd, void* write_buffer, int size) {
                     write_bytes = 0;
                     continue;
                 } else if (errno == EAGAIN) {
+                    //EAGAIN表明缓冲区数据写完了 
                     return write_sum_bytes;
                 } else {
                     return -1;
@@ -234,6 +246,7 @@ int Write(int fd, std::string& write_buffer) {
                     write_bytes = 0;
                     continue;
                 } else if (errno == EAGAIN) {
+                    //EAGAIN表明缓冲区数据写完了 
                     break;
                 } else {
                     return -1;

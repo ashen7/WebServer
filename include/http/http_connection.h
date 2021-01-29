@@ -1,5 +1,5 @@
-#ifndef HTTP_HTTP_H_
-#define HTTP_HTTP_H_
+#ifndef HTTP_HTTP_CONNECTION_H_
+#define HTTP_HTTP_CONNECTION_H_
 
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -14,9 +14,9 @@
 
 //类的前置声明
 namespace event {
-class EventLoop;
 class Channel;
-}
+class EventLoop;
+}  // namespace event
 
 namespace http {
 //http mime文件类型
@@ -37,7 +37,7 @@ class MimeType {
 
 // std::enable_shared_from_this 当类http被std::shared_ptr管理，
 // 且在类http的成员函数里需要把当前类对象作为参数传给其他函数时，就需要传递一个指向自身的std::shared_ptr
-class Http : public std::enable_shared_from_this<Http> {
+class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
  public:
     //处理状态
     enum ProcessState {
@@ -102,8 +102,8 @@ class Http : public std::enable_shared_from_this<Http> {
     };
 
  public:
-    Http(event::EventLoop* event_loop, int connect_fd);
-    ~Http();
+    HttpConnection(event::EventLoop* event_loop, int connect_fd);
+    ~HttpConnection();
 
     void AddNewEvent();  //给fd注册默认事件
     void HandleClose();      
@@ -160,4 +160,4 @@ class Http : public std::enable_shared_from_this<Http> {
 
 }  // namespace http
 
-#endif  // HTTP_HTTP_H_
+#endif  // HTTP_HTTP_CONNECTION_H_

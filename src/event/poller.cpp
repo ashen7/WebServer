@@ -11,7 +11,9 @@
 #include <iostream>
 #include <queue>
 
-#include "utility/socket_utils.h"
+#include "event/channel.h"
+#include "timer/timer.h"
+#include "http/http_connection.h"
 // #include "log/logging.h"
 
 namespace event {
@@ -29,15 +31,17 @@ Poller::Poller() {
 Poller::~Poller() {
 }
 
-// io多路复用 epoll wait返回就绪事件数
+// io多路复用 epoll_wait返回就绪事件数
 std::vector<std::shared_ptr<Channel>> Poller::Poll() {
     while (true) {
-        int events_num = epoll_wait(epoll_fd_, &(*event_array_.begin()), MAX_EVENTS_NUM, EPOLL_TIMEOUT);
+        int events_num = epoll_wait(epoll_fd_, &(*event_array_.begin()), 
+                                    MAX_EVENTS_NUM, EPOLL_TIMEOUT);
         if (events_num < 0) {
             perror("epoll wait error");
         }
         
-        std::vector<std::shared_ptr<Channel>> channel_array;
+        //遍历就绪事件
+        std::vector<std::shared_ptr<Channel>> ready_channels;
         for (int i = 0; i < events_num; ++i) {
             // 获取就绪事件的描述符
             int fd = event_array_[i].data.fd;
@@ -46,16 +50,18 @@ std::vector<std::shared_ptr<Channel>> Poller::Poll() {
             if (channel) {
                 //给fd设置就绪的事件
                 channel->set_revents(events);
-                //给fd设置监听的事件
+                //给fd设置监听的事件(0表示无监听事件)
                 channel->set_events(0);
-                channel_array.push_back(channel);
+                //添加到就绪channels中
+                ready_channels.push_back(channel);
             } else {
                 // LOG << "Channel is invalid";
             }
         }
 
-        if (channel_array.size() > 0) {
-            return channel_array;
+        //如果有就绪事件就返回
+        if (ready_channels.size() > 0) {
+            return ready_channels;
         }
     }
 }
@@ -118,15 +124,17 @@ void Poller::EpollDel(std::shared_ptr<Channel> channel) {
     http_array_[fd].reset();
 }
 
+//添加定时器
 void Poller::AddTimer(std::shared_ptr<Channel> channel, int timeout) {
-    std::shared_ptr<http::Http> t = channel->holder();
-    if (t) {
-        timer_heap_.AddTimer(t, timeout);
+    std::shared_ptr<http::HttpConnection> http_connection = channel->holder();
+    if (http_connection) {
+        timer_heap_.AddTimer(http_connection, timeout);
     } else {
         // LOG << "timer add fail";
     }
 }
 
+//处理超时
 void Poller::HandleExpire() {
     timer_heap_.HandleExpireEvent();
 }

@@ -8,7 +8,6 @@
 
 #include "event/poller.h"
 #include "event/event_loop.h"
-#include "utility/socket_utils.h"
 
 namespace event {
 
@@ -31,6 +30,8 @@ Channel::~Channel() {
     // close(fd_);
 }
 
+//IO事件的回调函数 EventLoop中调用Loop开始事件循环 会调用Poll得到就绪事件 
+//然后依次调用此函数处理就绪事件
 void Channel::HandleEvents() {
     events_ = 0;
     //触发挂起事件 并且没触发可读事件

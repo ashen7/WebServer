@@ -13,7 +13,7 @@
 #include "utility/count_down_latch.h"
 #include "utility/noncopyable.h"
 
-namespace thread_local_storage {
+namespace current_thread {
 // __thread: TLS线程局部存储 每个当前线程都有一个该变量的实例
 extern __thread int tls_thread_id;              //线程id
 extern __thread char tls_thread_id_str[32];     //线程id字符串

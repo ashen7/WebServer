@@ -1,6 +1,6 @@
 #include <getopt.h>
 
-#include "web_server.h"
+#include "server/web_server.h"
 #include "event/event_loop.h"
 // #include "log/logging.h"
 
@@ -30,16 +30,24 @@ int main(int argc, char* argv[]) {
                 port = atoi(optarg);
                 break;
             }
-            default:
+            default: {
                 break;
+            }
         }
     }
     
     // Logging::set_log_filename(log_path);
+    
+    //主loop 
     event::EventLoop main_loop;
-    WebServer web_server(&main_loop, thread_num, port);
-
-    web_server.Start();
+    //初始化
+    //1. 创建一个事件循环线程池（每个线程都有一个EventLoop对象)
+    //2. 创建监听套接字绑定服务器，监听端口，设置监听套接字为NIO，屏蔽管道信号
+    server::WebServer::GetInstance()->Initialize(&main_loop, thread_num, port);
+    //开始运行
+    //1. 
+    server::WebServer::GetInstance()->Start();
+    // 主loop开始事件循环
     main_loop.Loop();
     
     return 0;

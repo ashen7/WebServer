@@ -11,7 +11,7 @@
 #include <iostream>
 #include <memory>
 
-namespace thread_local_storage {
+namespace current_thread {
 // TLS
 __thread int tls_thread_id = 0;                     //线程id
 __thread char tls_thread_id_str[32];                //线程id字符串
@@ -31,7 +31,7 @@ void cache_thread_id() {
     }
 }
 
-}  // namespace thread_local_storage
+}  // namespace current_thread
 
 namespace thread {
 // 为了在线程中保留thread_name,thread_id这些数据
@@ -55,18 +55,18 @@ class ThreadData : utility::NonCopyAble {
     //得到线程id 运行线程函数 标记该线程为finished
     void Run() {
         //赋值线程id
-        *thread_id_ = thread_local_storage::thread_id();
+        *thread_id_ = current_thread::thread_id();
         thread_id_ = NULL;
         //倒计时 唤醒线程
         count_down_latch_->count_down();
         count_down_latch_ = NULL;
         //设置线程名
-        thread_local_storage::tls_thread_name = thread_name_.empty() ? "Thread" : thread_name_.c_str();
-        prctl(PR_SET_NAME, thread_local_storage::tls_thread_name);
+        current_thread::tls_thread_name = thread_name_.empty() ? "Thread" : thread_name_.c_str();
+        prctl(PR_SET_NAME, current_thread::tls_thread_name);
 
-        //执行线程函数
+        //执行线程函数(这里的线程函数是event_loop的Loop函数 事件循环)
         worker_();
-        thread_local_storage::tls_thread_name = "finished";
+        current_thread::tls_thread_name = "finished";
     }
 
  public:
@@ -103,12 +103,13 @@ void Thread::Start() {
     is_started_ = true;
 
     auto thread_data = std::make_shared<ThreadData>(worker_, thread_name_, &thread_id_, &count_down_latch_);
+    //创建线程并执行线程函数
     if (pthread_create(&pthread_id_, NULL, &Run, (void*)thread_data.get())) {
         is_started_ = false;
     } else {
-        //先阻塞 等待count_down来唤醒
+        //阻塞 等待count_down来唤醒
         count_down_latch_.wait();
-        //唤醒后 查看线程id是否大于0
+        //唤醒后 线程已经跑起来了 查看线程id是否大于0
         assert(thread_id_ > 0);
     }
 }

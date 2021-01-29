@@ -8,15 +8,10 @@
 #include <string>
 #include <unordered_map>
 
-#include "timer/timer.h"
-
-//类的前置声明
-
-namespace http {
-class Http;
-}
+#include "http/http_connection.h"
 
 namespace event {
+//类的前置声明
 class EventLoop;
 
 // Channel封装了一系列fd对应的操作 使用EventCallBack回调函数的手法
@@ -26,11 +21,13 @@ class Channel {
  public:
     typedef std::function<void()> EventCallBack;
 
+    explicit Channel() = default;
     explicit Channel(EventLoop* event_loop);
     Channel(EventLoop* event_loop, int fd);
     ~Channel();
 
-    //IO事件的回调函数 由Poller通过EventLoop调用
+    //IO事件的回调函数 EventLoop中调用Loop开始事件循环 会调用Poll得到就绪事件 
+    //然后依次调用此函数处理就绪事件
     void HandleEvents();      
     void HandleRead();
     void HandleWrite();
@@ -45,12 +42,12 @@ class Channel {
         fd_ = fd;
     }
 
-    std::shared_ptr<http::Http> holder() {
-        std::shared_ptr<http::Http> holder(holder_.lock());
-        return holder;
+    std::shared_ptr<http::HttpConnection> holder() {
+        std::shared_ptr<http::HttpConnection> http(holder_.lock());
+        return http;
     }
 
-    void set_holder(std::shared_ptr<http::Http> holder) {
+    void set_holder(std::shared_ptr<http::HttpConnection> holder) {
         holder_ = holder;
     }
 
@@ -100,7 +97,7 @@ class Channel {
     int last_events_;   //上一个事件
 
     // 方便找到上层持有该Channel的对象
-    std::weak_ptr<http::Http> holder_;
+    std::weak_ptr<http::HttpConnection> holder_;
 
     EventCallBack read_handler_;
     EventCallBack write_handler_;
