@@ -158,7 +158,7 @@ int EventLoop::CreateEventfd() {
     int event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (eventfd < 0) {
         // LOG << "Failed in eventfd";
-        abort();
+        exit(1);
     }
 
     return event_fd;

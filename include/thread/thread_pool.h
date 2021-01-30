@@ -1,5 +1,5 @@
-#ifndef THREAD_POOL_H_
-#define THREAD_POOL_H_
+#ifndef THREAD_THREAD_POOL_H_
+#define THREAD_THREAD_POOL_H_
 
 #include <pthread.h>
 
@@ -7,49 +7,63 @@
 #include <memory>
 #include <vector>
 
-#include "event/channel.h"
+#include "utility/noncopyable.h"
 
-const int THREADPOOL_INVALID = -1;
-const int THREADPOOL_LOCK_FAILURE = -2;
-const int THREADPOOL_QUEUE_FULL = -3;
-const int THREADPOOL_SHUTDOWN = -4;
-const int THREADPOOL_THREAD_FAILURE = -5;
-const int THREADPOOL_GRACEFUL = 1;
+namespace thread {
+//线程池状态
+enum ThreadPoolState {
+    THREAD_POOL_INVALID,
+    THREAD_POOL_LOCK_FAILURE,
+    THREAD_POOL_QUEUE_FULL,
+    THREAD_POOL_SHUTDOWN,
+    THREAD_POOL_THREAD_FAILURE,
+    THREAD_POOL_GRACEFUL
+};
 
-const int MAX_THREADS = 1024;
-const int MAX_QUEUE = 65535;
+typedef enum { 
+    immediate_shutdown, 
+    graceful_shutdown 
+} ShutDownOption;
 
-typedef enum { immediate_shutdown = 1, graceful_shutdown = 2 } ShutDownOption;
+const int kMaxThreadNum = 1024;
+const int kMaxQueueSize = 65535;
 
-struct ThreadPoolTask {
-    std::function<void(std::shared_ptr<void>)> fun;
+struct Task {
+    std::function<void(std::shared_ptr<void>)> callback;
     std::shared_ptr<void> args;
 };
 
-class ThreadPool {
- private:
-    static pthread_mutex_t lock;
-    static pthread_cond_t notify;
-
-    static std::vector<pthread_t> threads;
-    static std::vector<ThreadPoolTask> queue;
-    static int thread_count;
-    static int queue_size;
-    static int head;
-    // tail 指向尾节点的下一节点
-    static int tail;
-    static int count;
-    static int shutdown;
-    static int started;
-
+//线程池(用于计算线程)
+class ThreadPool : utility::NonCopyAble {
  public:
-    static int threadpool_create(int _thread_count, int _queue_size);
-    static int threadpool_add(std::shared_ptr<void> args,
-                              std::function<void(std::shared_ptr<void>)> fun);
-    static int threadpool_destroy(
-        ShutDownOption shutdown_option = graceful_shutdown);
-    static int threadpool_free();
-    static void* threadpool_thread(void* args);
+    ThreadPool(int thread_num, int queue_size);
+    ~ThreadPool();
+
+    int Start();
+    int Add(std::shared_ptr<void> args, 
+            std::function<void(std::shared_ptr<void>)> task);
+    int Destroy(ShutDownOption shutdown_option = graceful_shutdown);
+    int Free();
+
+ private:
+    static void* Worker(void* args);
+    void Run();
+
+ private:
+    int thread_num_;
+    int queue_size_;
+    int head_;
+    int tail_;
+    int count_;
+    int started_thread_count_;
+    int shutdown_;
+
+    std::vector<pthread_t> threads_;
+    std::vector<Task> task_queue_;
+    pthread_mutex_t mutex_;
+    pthread_cond_t condition_;
 };
 
-#endif
+}  // namespace thread
+
+#endif  // THREAD_THREAD_POOL_H_

@@ -2,6 +2,7 @@
 
 #include "server/web_server.h"
 #include "event/event_loop.h"
+#include "log/logging.h"
 
 namespace configure {
 //默认值
@@ -20,10 +21,6 @@ static void ParseArg(int argc, char* argv[]) {
             }
             case 'l': {
                 log_path = optarg;
-                if (log_path.size() < 2 || optarg[0] != '/') {
-                    printf("log_path should start with \"/\"\n");
-                    abort();
-                }
                 break;
             }
             case 'p': {
@@ -43,7 +40,7 @@ int main(int argc, char* argv[]) {
     //解析参数
     configure::ParseArg(argc, argv);
     //设置日志文件    
-    // Logging::set_log_filename(configure::log_path);
+    log::Logging::set_file_name(configure::log_path);
 
     //主loop  初始化poller, event_fd，给event_fd注册到epoll中并注册其事件处理回调
     event::EventLoop main_loop;

@@ -8,7 +8,7 @@
 
 namespace event {
 
-//绑定线程函数，也就是Loop
+//IO线程，绑定线程函数，也就是Loop
 EventLoopThread::EventLoopThread()
     : sub_loop_(NULL), 
       is_exiting_(false),
@@ -65,7 +65,7 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop* main_loop, int thread_num)
       next_(0) {
     if (thread_num_ <= 0) {
         // LOG << "thread num <= 0";
-        abort();
+        exit(1);
     }
 }
 

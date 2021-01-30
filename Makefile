@@ -11,7 +11,7 @@ LIBPATH  := -L ./
 LIBS     := -lpthread
 
 SOURCES := $(wildcard src/utility/*.cpp \
-                      src/thread/thread.cpp \
+                      src/thread/*.cpp \
                       src/timer/*.cpp \
 					  src/log/*.cpp \
                       src/http/*.cpp \

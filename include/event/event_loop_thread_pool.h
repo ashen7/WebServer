@@ -9,6 +9,7 @@
 #include <vector>
 
 namespace event {
+//IO线程
 class EventLoopThread : utility::NonCopyAble {
  public:
     EventLoopThread();
@@ -29,6 +30,7 @@ class EventLoopThread : utility::NonCopyAble {
     bool is_exiting_;       
 };
 
+//IO线程池
 class EventLoopThreadPool : utility::NonCopyAble {
  public:
     EventLoopThreadPool(EventLoop* main_loop, int thread_num);
