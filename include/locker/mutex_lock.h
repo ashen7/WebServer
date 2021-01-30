@@ -19,6 +19,8 @@ class MutexLock : utility::NonCopyAble {
     }
 
     ~MutexLock() {
+        //要先拿到锁 再释放锁 因为直接释放锁 其他在用锁的地方就相当于失效了
+        pthread_mutex_lock(&mutex_);
         pthread_mutex_destroy(&mutex_);
     }
 
@@ -61,7 +63,7 @@ class LockGuard : utility::NonCopyAble {
 class ConditionVariable : utility::NonCopyAble {
  public:
     explicit ConditionVariable(MutexLock& mutex) 
-        : mutex_(mutex_) {
+        : mutex_(mutex) {
         pthread_cond_init(&cond_, NULL);
     }
 

@@ -28,4 +28,5 @@ cd build
 rm -rf * && cmake .. && make -j8 && cp web_server ../ 
 cd ..
 
+~/tools/del_core.sh
 ./web_server -p $port -t $thread_num -l $log_path 

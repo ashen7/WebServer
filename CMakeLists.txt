@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5.1)
 
 #g++ 编译选项
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DNDEBUG -O3 -W -Wall -Wfatal-errors")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DNDEBUG -O3 -w")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DNDEBUG -O3 -g -w")
 
 #项目根目录
 set(ROOT_DIR .)

@@ -7,7 +7,7 @@
 namespace configure {
 //默认值
 static int thread_num = 8;
-static int port = 80;
+static int port = 8888;
 static std::string log_path = "./web_server.log";
 
 static void ParseArg(int argc, char* argv[]) {

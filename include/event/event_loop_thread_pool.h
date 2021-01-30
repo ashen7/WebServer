@@ -44,8 +44,8 @@ class EventLoopThreadPool : utility::NonCopyAble {
     bool is_started_;
     int thread_num_;
     int next_;
-    std::vector<std::shared_ptr<EventLoopThread>> event_loop_thread_array_;
-    std::vector<EventLoop*> event_loop_array_;
+    std::vector<std::shared_ptr<EventLoopThread>> sub_loop_thread_array_;
+    std::vector<EventLoop*> sub_loop_array_;
 };
 
 }  // namespace event
