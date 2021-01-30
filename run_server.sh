@@ -15,5 +15,17 @@ connection_num=8
 #线程池
 thread_num=6
 
-make clean && make -j8
+#Makefile
+#make clean && make -j8
+
+#cmake 判断文件夹是否存在
+if [ ! -d "./build" ]
+then
+    mkdir build
+fi
+
+cd build
+rm -rf * && cmake .. && make -j8 && cp web_server ../ 
+cd ..
+
 ./web_server -p $port -t $thread_num -l $log_path 
