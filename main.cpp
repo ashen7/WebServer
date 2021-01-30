@@ -2,13 +2,12 @@
 
 #include "server/web_server.h"
 #include "event/event_loop.h"
-// #include "log/logging.h"
 
 namespace configure {
 //默认值
 static int thread_num = 8;
 static int port = 80;
-static std::string log_path = "./WebServer.log";
+static std::string log_path = "./web_server.log";
 
 static void ParseArg(int argc, char* argv[]) {
     int opt;

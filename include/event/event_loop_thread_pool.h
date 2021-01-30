@@ -8,8 +8,6 @@
 #include <memory>
 #include <vector>
 
-// #include "log/logging.h"
-
 namespace event {
 class EventLoopThread : utility::NonCopyAble {
  public:

@@ -84,7 +84,7 @@ static char favicon[555] = {
 };
 
 //HTML协议的文件类型
-void MimeType::Init() {
+void MimeType::OnceInit() {
     mime_map[".html"] = "text/html";
     mime_map[".avi"] = "video/x-msvideo";
     mime_map[".bmp"] = "image/bmp";
@@ -104,7 +104,7 @@ void MimeType::Init() {
 //根据type得到mime文件类型
 std::string MimeType::get_mime(const std::string& type) {
     //只会执行一次的函数
-    pthread_once(&once_control, MimeType::Init);
+    pthread_once(&once_control, MimeType::OnceInit);
     if (mime_map.find(type) == mime_map.end()) {
         return mime_map["default"];
     } else {
@@ -112,7 +112,7 @@ std::string MimeType::get_mime(const std::string& type) {
     }
 }
 
-//http类
+//http类 给连接套接字绑定事件处理回调
 HttpConnection::HttpConnection(event::EventLoop* event_loop, int connect_fd)
     : event_loop_(event_loop),
       channel_(new event::Channel(connect_fd)),
@@ -137,8 +137,8 @@ HttpConnection::~HttpConnection() {
 
 //给fd注册默认事件, 这里给了超时时间，所以会绑定定时器和http对象
 void HttpConnection::PollerAdd() {
-    channel_->set_events(DEFAULT_EVENT);
-    event_loop_->PollerAdd(channel_, DEFAULT_EXPIRE_TIME);
+    channel_->set_events(kDefaultEvent);
+    event_loop_->PollerAdd(channel_, kDefaultExpireTime);
 }
 
 //处理关闭 删除fd注册的事件
@@ -291,9 +291,9 @@ void HttpConnection::HandleUpdate() {
 
     if (!is_error_ && connection_state_ == CONNECTED) {
         if (events != 0) {
-            int timeout = DEFAULT_EXPIRE_TIME;
+            int timeout = kDefaultExpireTime;
             if (is_keep_alive_) {
-                timeout = DEFAULT_KEEP_ALIVE_TIME;
+                timeout = kDefaultKeepAliveTime;
             }
             if ((events & EPOLLIN) && (events & EPOLLOUT)) {
                 events = 0;
@@ -303,11 +303,11 @@ void HttpConnection::HandleUpdate() {
             event_loop_->PollerMod(channel_, timeout);
         } else if (is_keep_alive_) {
             events |= (EPOLLIN | EPOLLET);
-            int timeout = DEFAULT_KEEP_ALIVE_TIME;
+            int timeout = kDefaultKeepAliveTime;
             event_loop_->PollerMod(channel_, timeout);
         } else {
             events |= (EPOLLIN | EPOLLET);
-            int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
+            int timeout = (kDefaultKeepAliveTime >> 1);
             event_loop_->PollerMod(channel_, timeout);
         }
     } else if (!is_error_ 
@@ -547,7 +547,7 @@ HttpConnection::ResponseState HttpConnection::Response() {
             is_keep_alive_ = true;
             response_header += std::string("Connection: Keep-Alive\r\n") +
                                            "Keep-Alive: timeout=" + 
-                                            std::to_string(DEFAULT_KEEP_ALIVE_TIME) +
+                                            std::to_string(kDefaultKeepAliveTime) +
                                             "\r\n";
         }
 

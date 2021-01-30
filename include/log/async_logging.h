@@ -1,5 +1,5 @@
-#ifndef ASYNC_LOGGING_H_
-#define ASYNC_LOGGING_H_
+#ifndef LOG_ASYNC_LOGGING_H_
+#define LOG_ASYNC_LOGGING_H_
 
 #include <functional>
 #include <string>
@@ -7,43 +7,43 @@
 
 #include "log_stream.h"
 #include "locker/mutex_lock.h"
+#include "utility/count_down_latch.h"
 #include "thread/thread.h"
 
-class AppendFile {
+namespace log {
+//操作文件的工具类
+class FileUtils {
  public:
-    explicit AppendFile(std::string filename)
-        : fp_(fopen(filename.c_str(), "ae")) {
-        setbuffer(fp_, buffer_, sizeof buffer_);
+    explicit FileUtils(std::string file_name)
+        : fp_(fopen(file_name.c_str(), "ae")) {
+        setbuffer(fp_, buffer_, sizeof(buffer_));
     }
 
-    ~AppendFile() {
+    ~FileUtils() {
         fclose(fp_);
     }
 
-    // append 会向文件写
-    void append(const char* logline, const size_t len) {
-        size_t n = this->write(logline, len);
-        size_t remain = len - n;
+    // write 会向文件写
+    void Write(const char* single_log, const size_t size) {
+        size_t write_size = fwrite_unlocked(single_log, 1, size, fp_);
+        size_t remain = size - write_size;
+        //如果一次没写完 就继续写
         while (remain > 0) {
-            size_t x = this->write(logline + n, remain);
+            size_t x = fwrite_unlocked(single_log + write_size, 1, remain, fp_);
             if (x == 0) {
-                int err = ferror(fp_);
-                if (err)
-                    fprintf(stderr, "AppendFile::append() failed !\n");
+                int error = ferror(fp_);
+                if (error) {
+                    fprintf(stderr, "FileUtils::append() failed !\n");
+                }
                 break;
             }
-            n += x;
-            remain = len - n;
+            write_size += x;
+            remain = size - write_size;
         }
     }
 
-    void flush() {
+    void Flush() {
         fflush(fp_);
-    }
-
- private:
-    size_t write(const char* logline, size_t len) {
-        return fwrite_unlocked(logline, 1, len, fp_);
     }
 
  private:
@@ -51,91 +51,96 @@ class AppendFile {
     char buffer_[64 * 1024];
 };
 
-// TODO 提供自动归档功能
+// TODO: 提供自动归档功能
 class LogFile : utility::NonCopyAble {
  public:
-    // 每被append
-    // flushEveryN次，flush一下，会往文件写，只不过，文件也是带缓冲区的
-    LogFile(const std::string& basename, int flushEveryN = 1024)
-        : basename_(basename),
-          flushEveryN_(flushEveryN),
+    // 每写flush_every_n次，就会flush一次
+    LogFile(const std::string& file_name, int flush_every_n = 1024)
+        : file_name_(file_name),
+          flush_every_n_(flush_every_n),
           count_(0),
-          mutex_(new MutexLock) {
-        // assert(basename.find('/') >= 0);
-        file_.reset(new AppendFile(basename));
+          mutex_() {
+        file_.reset(new FileUtils(file_name));
+    }
     
-    ~LogFile() {}
-
-    void append(const char* logline, int len) {
-        LockGuard lock(*mutex_);
-        append_unlocked(logline, len);
+    ~LogFile() {
     }
 
-    void flush() {
-        LockGuard lock(*mutex_);
-        file_->flush();
+    void Write(const char* single_log, int size) {
+        locker::LockGuard lock(mutex_);
+        {
+            // 每写flush_every_n次，就会flush一次
+            file_->Write(single_log, size);
+            ++count_;
+            if (count_ >= flush_every_n_) {
+                count_ = 0;
+                file_->Flush();
+            }
+        }
     }
 
-    bool rollFile();
-
- private:
-    void append_unlocked(const char* logline, int len) {
-        file_->append(logline, len);
-        ++count_;
-        if (count_ >= flushEveryN_) {
-            count_ = 0;
-            file_->flush();
+    void Flush() {
+        locker::LockGuard lock(mutex_);
+        {
+            file_->Flush();
         }
     }
 
  private:
-    const std::string basename_;
-    const int flushEveryN_;
 
+ private:
+    const std::string file_name_;
+    const int flush_every_n_;
     int count_;
-    std::unique_ptr<MutexLock> mutex_;
-    std::unique_ptr<AppendFile> file_;
+    locker::MutexLock mutex_;
+    std::unique_ptr<FileUtils> file_;
 };
 
 class AsyncLogging : utility::NonCopyAble {
  public:
-    AsyncLogging(const std::string basename, int flushInterval = 2);
+    AsyncLogging(const std::string file_name, int flush_interval = 2);
     ~AsyncLogging() {
-        if (running_)
-            stop();
-    }
-    void append(const char* logline, int len);
-
-    void start() {
-        running_ = true;
-        thread_.start();
-        latch_.wait();
+        if (is_running_) {
+            Stop();
+        }
     }
 
-    void stop() {
-        running_ = false;
-        cond_.notify();
-        thread_.join();
+    void Write(const char* single_log, int size);
+
+    //开始线程
+    void Start() {
+        is_running_ = true;
+        thread_.Start();
+        count_down_latch_.wait();
+    }
+
+    //停止线程
+    void Stop() {
+        is_running_ = false;
+        condition_.notify();
+        thread_.Join();
     }
 
  private:
-    void threadFunc();
+    void Worker();  //线程函数
 
  private:
-    typedef FixedBuffer<kLargeBuffer> Buffer;
-    typedef std::vector<std::shared_ptr<Buffer>> BufferVector;
-    typedef std::shared_ptr<Buffer> BufferPtr;
+    typedef FixedBuffer<kLargeBufferSize> Buffer;
     
-    const int flushInterval_;
-    bool running_;
-    std::string basename_;
+    std::string file_name_;
+    const int flush_interval_;
+    bool is_running_;
+
+    std::shared_ptr<Buffer> current_buffer_;
+    std::shared_ptr<Buffer> next_buffer_;
+    std::vector<std::shared_ptr<Buffer>> buffers_;
+
     thread::Thread thread_;
-    locker:;MutexLock mutex_;
+    locker::MutexLock mutex_;
     locker::ConditionVariable condition_;
-    utility::CountDownLatch latch_;
-    BufferPtr currentBuffer_;
-    BufferPtr nextBuffer_;
-    BufferVector buffers_;
+    utility::CountDownLatch count_down_latch_;
 };
 
-#endif
+}  // namespace log
+
+#endif  // LOG_ASYNC_LOGGING_H_

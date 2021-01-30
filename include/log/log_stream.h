@@ -1,5 +1,5 @@
-#ifndef LOG_STREAM_H_
-#define LOG_STREAM_H_
+#ifndef LOG_LOG_STREAM_H_
+#define LOG_LOG_STREAM_H_
 
 #include <assert.h>
 #include <string.h>
@@ -7,67 +7,89 @@
 
 #include "utility/noncopyable.h"
 
+namespace log {
+//类的前置声明
 class AsyncLogging;
-const int kSmallBuffer = 4000;
-const int kLargeBuffer = 4000 * 1000;
+constexpr int kSmallBufferSize = 4000;
+constexpr int kLargeBufferSize = 4000 * 1000;
 
-template <int SIZE>
+//固定的缓冲区
+template <int BufferSize>
 class FixedBuffer : utility::NonCopyAble {
  public:
-    FixedBuffer() : cur_(data_) {}
+    FixedBuffer() 
+        : current_buffer_(buffer_) {
+    }
 
-    ~FixedBuffer() {}
+    ~FixedBuffer() {
+    }
 
-    void append(const char* buf, size_t len) {
-        if (avail() > static_cast<int>(len)) {
-            memcpy(cur_, buf, len);
-            cur_ += len;
+    //copy buffer的size个字节到current_buffer_来
+    void write(const char* buffer, int size) {
+        if (capacity() > size) {
+            memcpy(current_buffer_, buffer, size);
+            this->add(size);
         }
     }
 
-    const char* data() const {
-        return data_;
-    }
-    int length() const {
-        return static_cast<int>(cur_ - data_);
+    //源buffer
+    const char* buffer() const {
+        return buffer_;
     }
 
-    char* current() {
-        return cur_;
-    }
-    int avail() const {
-        return static_cast<int>(end() - cur_);
-    }
-    void add(size_t len) {
-        cur_ += len;
+    //当前buffer(buffer+偏移量)
+    char* current_buffer() {
+        return current_buffer_;
     }
 
+    //当前buufer的偏移量（相对buffer起始地址的偏移量）
+    int size() const {
+        return static_cast<int>(current_buffer_ - buffer_);
+    }
+
+    //剩余buffer偏移量 = 总buffer的偏移量 - 当前buffer的偏移量
+    int capacity() const {
+        return static_cast<int>(this->end() - current_buffer_);
+    }
+
+    //当前buffer偏移size个字节
+    void add(size_t size) {
+        current_buffer_ += size;
+    }
+
+    //将当前buffer偏移量置为0,即为buffer
     void reset() {
-        cur_ = data_;
+        current_buffer_ = buffer_;
     }
+
+    //给buffer置0
     void bzero() {
-        memset(data_, 0, sizeof data_);
+        memset(buffer_, 0, sizeof(buffer_));
     }
 
  private:
     const char* end() const {
-        return data_ + sizeof data_;
+        return buffer_ + sizeof(buffer_);
     }
 
-    char data_[SIZE];
-    char* cur_;
+    char buffer_[BufferSize];
+    char* current_buffer_;
 };
 
+//输出流对象 重载输出流运算符<<  将值写入buffer中 
 class LogStream : utility::NonCopyAble {
  public:
-    typedef FixedBuffer<kSmallBuffer> Buffer;
+    typedef FixedBuffer<kSmallBufferSize> Buffer;
 
-    LogStream& operator<<(bool v) {
-        buffer_.append(v ? "1" : "0", 1);
-        return *this;
+    LogStream() {
+    }
+    ~LogStream() {
     }
 
-    LogStream& operator<<(short);
+    //重载输出流运算符<<  将值写入buffer中 
+    LogStream& operator<<(bool value);
+
+    LogStream& operator<<(short number);
     LogStream& operator<<(unsigned short);
     LogStream& operator<<(int);
     LogStream& operator<<(unsigned int);
@@ -76,56 +98,37 @@ class LogStream : utility::NonCopyAble {
     LogStream& operator<<(long long);
     LogStream& operator<<(unsigned long long);
 
-    LogStream& operator<<(const void*);
-
-    LogStream& operator<<(float v) {
-        *this << static_cast<double>(v);
-        return *this;
-    }
+    LogStream& operator<<(float value);
     LogStream& operator<<(double);
     LogStream& operator<<(long double);
 
-    LogStream& operator<<(char v) {
-        buffer_.append(&v, 1);
-        return *this;
+    LogStream& operator<<(char str);
+    LogStream& operator<<(const char*);
+    LogStream& operator<<(const unsigned char*);
+    LogStream& operator<<(const std::string&);
+
+    void Write(const char* buffer, int size) {
+        buffer_.write(buffer, size);
     }
 
-    LogStream& operator<<(const char* str) {
-        if (str)
-            buffer_.append(str, strlen(str));
-        else
-            buffer_.append("(null)", 6);
-        return *this;
-    }
-
-    LogStream& operator<<(const unsigned char* str) {
-        return operator<<(reinterpret_cast<const char*>(str));
-    }
-
-    LogStream& operator<<(const std::string& v) {
-        buffer_.append(v.c_str(), v.size());
-        return *this;
-    }
-
-    void append(const char* data, int len) {
-        buffer_.append(data, len);
-    }
     const Buffer& buffer() const {
         return buffer_;
     }
-    void resetBuffer() {
+
+    void reset_buffer() {
         buffer_.reset();
     }
 
  private:
-    void staticCheck();
-
     template <typename T>
-    void formatInteger(T);
+    void FormatInt(T);
+
+ private:
+    static constexpr int kMaxNumberSize = 32;
 
     Buffer buffer_;
-
-    static const int kMaxNumericSize = 32;
 };
 
-#endif
+}  // namespace log
+
+#endif  // LOG_LOG_STREAM_H_

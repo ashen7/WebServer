@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "utility/socket_utils.h"
-// #include "log/logging.h"
+#include "log/logging.h"
 
 namespace event {
 //线程局部变量 记录本线程持有的EventLoop的指针 

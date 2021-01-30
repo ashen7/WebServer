@@ -13,7 +13,6 @@
 #include "thread/thread.h"
 #include "locker/mutex_lock.h"
 #include "utility/socket_utils.h"
-// #include "log/logging.h"
 
 namespace event {
 // Reactor模式的核心 每个Reactor线程内部调用一个EventLoop

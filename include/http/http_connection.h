@@ -28,7 +28,7 @@ class MimeType {
     MimeType();
     MimeType(const MimeType& mime_type);
 
-    static void Init();
+    static void OnceInit();
 
  private:
     static std::unordered_map<std::string, std::string> mime_map;
@@ -129,9 +129,9 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
     ResponseState Response();     //构建响应报文并写入write_buffer
 
  private:
-    static constexpr int DEFAULT_EVENT = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    static constexpr int DEFAULT_EXPIRE_TIME = 2 * 1000;           // ms
-    static constexpr int DEFAULT_KEEP_ALIVE_TIME = 5 * 60 * 1000;  // ms
+    static constexpr int kDefaultEvent = EPOLLIN | EPOLLET | EPOLLONESHOT; //默认事件
+    static constexpr int kDefaultExpireTime = 2 * 1000;           //默认超时时间 ms
+    static constexpr int kDefaultKeepAliveTime = 5 * 60 * 1000;   //默认长连接保持时间 ms
 
     int connect_fd_;                             //连接套接字fd
     event::EventLoop* event_loop_;               //事件循环

@@ -1,5 +1,5 @@
 
-#include "logging.h"
+#include "log/logging.h"
 
 #include <assert.h>
 #include <sys/time.h>
@@ -7,46 +7,54 @@
 
 #include <iostream>
 
-#include "async_logging.h"
+#include "log/async_logging.h"
 #include "thread/thread.h"
 
+namespace log {
 static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 static AsyncLogging* async_logging = nullptr;
 
-std::string Logging::log_filename_ = "./WebServer.log";
+std::string Logging::file_name_ = "./web_server.log";
 
-void once_init() {
-    async_logging = new AsyncLogging(Logging::log_filename());
+//初始化异步日志 并start线程
+void OnceInit() {
+    async_logging = new AsyncLogging(Logging::file_name());
     async_logging->Start();
 }
 
-void output(const char* msg, int len) {
-    pthread_once(&once_control, once_init);
-    async_logging->Append(msg, len);
+//运行异步日志线程, 写日志
+void Write(const char* single_log, int size) {
+    //只会执行一次的函数
+    pthread_once(&once_control, OnceInit);
+    async_logging->Write(single_log, size);
 }
 
-Logging::Logging(const char* filename, int line) 
-    : impl_(filename, line) {
+//logging
+Logging::Logging(const char* file_name, int line) 
+    : impl_(file_name, line) {
 }
 
 Logging::~Logging() {
-    impl_.stream_ << " -- " << impl_.basename_ << ':' << impl_.line_ << '\n';
-    const LogStream::Buffer& buf(stream().buffer());
-    output(buf.data(), buf.length());
+    impl_.stream_ << " -- " << impl_.file_name_ << ':' << impl_.line_ << '\n';
+    const LogStream::Buffer& buffer(stream().buffer());
+    Write(buffer.buffer(), buffer.size());
 }
 
-Logging::Impl::Impl(const char* filename, int line)
-    : stream_(), line_(line), basename_(filename) {
-    formatTime();
+Logging::Impl::Impl(const char* file_name, int line)
+    : stream_(), 
+      file_name_(file_name), 
+      line_(line) {
+    FormatTime();
 }
 
-void Logging::Impl::formatTime() {
-    struct timeval tv;
-    time_t time;
-    char str_t[26] = {0};
-    gettimeofday(&tv, NULL);
-    time = tv.tv_sec;
-    struct tm* p_time = localtime(&time);
-    strftime(str_t, 26, "%Y-%m-%d %H:%M:%S\n", p_time);
-    stream_ << str_t;
+void Logging::Impl::FormatTime() {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    struct tm* current_time = localtime(&now.tv_sec);
+
+    char time_str[26] = { 0 };
+    strftime(time_str, 26, "%Y-%m-%d %H:%M:%S\n", current_time);
+    stream_ << time_str;
 }
+
+}  // namespace log

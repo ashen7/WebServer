@@ -1,5 +1,5 @@
 
-#include "log_stream.h"
+#include "log/log_stream.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -9,94 +9,137 @@
 #include <algorithm>
 #include <limits>
 
-const char digits[] = "9876543210123456789";
-const char* zero = digits + 9;
+namespace log {
+//定义小BufferSize和大BufferSize的固定缓冲区类
+template class FixedBuffer<kSmallBufferSize>;
+template class FixedBuffer<kLargeBufferSize>;
 
-// From muduo
+//用于format int
+static const char digits[] = "9876543210123456789";
+static const char* zero = digits + 9;
+
 template <typename T>
-size_t convert(char buf[], T value) {
-    T i = value;
-    char* p = buf;
+static size_t IntToString(char buffer[], T number) {
+    char* buf = buffer;
 
+    //从数字的个位开始 去每个字 将其转成char
     do {
-        int lsd = static_cast<int>(i % 10);
-        i /= 10;
-        *p++ = zero[lsd];
-    } while (i != 0);
+        int index = static_cast<int>(number % 10);
+        number /= 10;
+        *buf++ = zero[index];
+    } while (number != 0);
 
-    if (value < 0) {
-        *p++ = '-';
+    //如果这个值是负数 就加上-号
+    if (number < 0) {
+        *buf++ = '-';
     }
-    *p = '\0';
-    std::reverse(buf, p);
+    *buf = '\0';
+    //前面是从个位开始往上算的 ，这里要反转过来
+    std::reverse(buffer, buf);
 
-    return p - buf;
+    return buf - buffer;
 }
 
-template class FixedBuffer<kSmallBuffer>;
-template class FixedBuffer<kLargeBuffer>;
-
+//格式化int类型
 template <typename T>
-void LogStream::formatInteger(T v) {
+void LogStream::FormatInt(T number) {
     // buffer容不下kMaxNumericSize个字符的话会被直接丢弃
-    if (buffer_.avail() >= kMaxNumericSize) {
-        size_t len = convert(buffer_.current(), v);
-        buffer_.add(len);
+    if (buffer_.capacity() >= kMaxNumberSize) {
+        size_t size = IntToString(buffer_.current_buffer(), number);
+        buffer_.add(size);
     }
 }
 
-LogStream& LogStream::operator<<(short v) {
-    *this << static_cast<int>(v);
+//重载输出流运算符 bool型
+LogStream& LogStream::operator<<(bool value) {
+        Write(value ? "1" : "0", 1);
+        return *this;
+}
+
+//重载输出流运算符 整形
+LogStream& LogStream::operator<<(short number) {
+    *this << static_cast<int>(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(unsigned short v) {
-    *this << static_cast<unsigned int>(v);
+LogStream& LogStream::operator<<(unsigned short number) {
+    *this << static_cast<unsigned int>(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(int v) {
-    formatInteger(v);
+LogStream& LogStream::operator<<(int number) {
+    FormatInt(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(unsigned int v) {
-    formatInteger(v);
+LogStream& LogStream::operator<<(unsigned int number) {
+    FormatInt(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(long v) {
-    formatInteger(v);
+LogStream& LogStream::operator<<(long number) {
+    FormatInt(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(unsigned long v) {
-    formatInteger(v);
+LogStream& LogStream::operator<<(unsigned long number) {
+    FormatInt(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(long long v) {
-    formatInteger(v);
+LogStream& LogStream::operator<<(long long number) {
+    FormatInt(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(unsigned long long v) {
-    formatInteger(v);
+LogStream& LogStream::operator<<(unsigned long long number) {
+    FormatInt(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(double v) {
-    if (buffer_.avail() >= kMaxNumericSize) {
-        int len = snprintf(buffer_.current(), kMaxNumericSize, "%.12g", v);
-        buffer_.add(len);
+LogStream& LogStream::operator<<(float value) {
+    *this << static_cast<double>(value);
+    return *this;
+}
+
+LogStream& LogStream::operator<<(double value) {
+    if (buffer_.capacity() >= kMaxNumberSize) {
+        int size = snprintf(buffer_.current_buffer(), kMaxNumberSize, "%.12g", value);
+        buffer_.add(size);
     }
     return *this;
 }
 
-LogStream& LogStream::operator<<(long double v) {
-    if (buffer_.avail() >= kMaxNumericSize) {
-        int len = snprintf(buffer_.current(), kMaxNumericSize, "%.12Lg", v);
-        buffer_.add(len);
+LogStream& LogStream::operator<<(long double value) {
+    if (buffer_.capacity() >= kMaxNumberSize) {
+        int size = snprintf(buffer_.current_buffer(), kMaxNumberSize, "%.12Lg", value);
+        buffer_.add(size);
     }
     return *this;
 }
+
+//重载输出流运算符 字符串
+LogStream& LogStream::operator<<(char str) {
+        Write(&str, 1);
+        return *this;
+}
+
+LogStream& LogStream::operator<<(const char* str) {
+    if (str) {
+        Write(str, strlen(str));
+    } else {
+        Write("(null)", 6);
+    }
+    return *this;
+}
+
+LogStream& LogStream::operator<<(const unsigned char* str) {
+    return operator<<(reinterpret_cast<const char*>(str));
+}
+
+LogStream& LogStream::operator<<(const std::string& str) {
+    Write(str.c_str(), str.size());
+    return *this;
+}
+
+}  // namespace log

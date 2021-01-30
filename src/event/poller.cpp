@@ -14,7 +14,7 @@
 #include "event/channel.h"
 #include "timer/timer.h"
 #include "http/http_connection.h"
-// #include "log/logging.h"
+#include "log/logging.h"
 
 namespace event {
 
@@ -24,9 +24,9 @@ Poller::Poller() {
     epoll_fd_ = epoll_create1(EPOLL_CLOEXEC); 
     assert(epoll_fd_ > 0);
 
-    ready_events_.resize(MAX_EVENTS_NUM);
-    ready_channels_.resize(MAX_FD_NUM);
-    http_connections_.resize(MAX_FD_NUM);
+    ready_events_.resize(kMaxEventsNum);
+    ready_channels_.resize(kMaxFdNum);
+    http_connections_.resize(kMaxFdNum);
 }
 
 Poller::~Poller() {
@@ -37,7 +37,7 @@ std::vector<std::shared_ptr<Channel>> Poller::Poll() {
     while (true) {
         //epoll_wait等待就绪事件
         int events_num = epoll_wait(epoll_fd_, &(*ready_events_.begin()), 
-                                    MAX_EVENTS_NUM, EPOLL_TIMEOUT);
+                                    kMaxEventsNum, kEpollTimeOut);
         if (events_num < 0) {
             perror("epoll wait error");
         }

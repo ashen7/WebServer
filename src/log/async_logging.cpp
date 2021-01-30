@@ -1,4 +1,4 @@
-#include "async_logging.h"
+#include "log/async_logging.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -6,111 +6,106 @@
 
 #include <functional>
 
-AsyncLogging::AsyncLogging(std::string log_filename_, int flushInterval)
-    : flushInterval_(flushInterval),
-      running_(false),
-      basename_(log_filename_),
-      thread_(std::bind(&AsyncLogging::threadFunc, this), "Logging"),
+namespace log {
+AsyncLogging::AsyncLogging(std::string file_name, int flush_interval)
+    : file_name_(file_name),
+      flush_interval_(flush_interval),
       mutex_(),
-      cond_(mutex_),
-      currentBuffer_(new Buffer),
-      nextBuffer_(new Buffer),
+      condition_(mutex_),
+      count_down_latch_(1),
+      thread_(std::bind(&AsyncLogging::Worker, this), "Logging"),
+      current_buffer_(new Buffer),
+      next_buffer_(new Buffer),
       buffers_(),
-      latch_(1) {
-    assert(log_filename_.size() > 1);
-    currentBuffer_->bzero();
-    nextBuffer_->bzero();
+      is_running_(false) {
+    assert(file_name_.size() > 1);
+    current_buffer_->bzero();
+    next_buffer_->bzero();
     buffers_.reserve(16);
 }
 
-void AsyncLogging::Append(const char* logline, int len) {
-    LockGuard lock(mutex_);
-    if (currentBuffer_->avail() > len)
-        currentBuffer_->Append(logline, len);
-    else {
-        buffers_.push_back(currentBuffer_);
-        currentBuffer_.reset();
-        if (nextBuffer_)
-            currentBuffer_ = std::move(nextBuffer_);
-        else
-            currentBuffer_.reset(new Buffer);
-        currentBuffer_->Append(logline, len);
-        cond_.notify();
+//写日志
+void AsyncLogging::Write(const char* single_log, int size) {
+    locker::LockGuard lock(mutex_);
+    {
+        if (current_buffer_->capacity() > size) {
+            current_buffer_->write(single_log, size);
+        } else {
+            buffers_.push_back(current_buffer_);
+            current_buffer_.reset();
+            if (next_buffer_) {
+                current_buffer_ = std::move(next_buffer_);
+            } else {
+                current_buffer_.reset(new Buffer);
+            }
+            current_buffer_->write(single_log, size);
+            condition_.notify();
+        }
     }
 }
 
-void AsyncLogging::threadFunc() {
-    assert(running_ == true);
-    latch_.countDown();
-    LogFile output(basename_);
-    BufferPtr newBuffer1(new Buffer);
-    BufferPtr newBuffer2(new Buffer);
-    newBuffer1->bzero();
-    newBuffer2->bzero();
-    BufferVector buffersToWrite;
-    buffersToWrite.reserve(16);
-    while (running_) {
-        assert(newBuffer1 && newBuffer1->length() == 0);
-        assert(newBuffer2 && newBuffer2->length() == 0);
-        assert(buffersToWrite.empty());
+//线程函数
+void AsyncLogging::Worker() {
+    assert(is_running_ == true);
+    count_down_latch_.count_down();
+    LogFile log_file(file_name_);
+    std::shared_ptr<Buffer> new_buffer1(new Buffer);
+    std::shared_ptr<Buffer> new_buffer2(new Buffer);
+    new_buffer1->bzero();
+    new_buffer2->bzero();
+    std::vector<std::shared_ptr<Buffer>> buffers;
+    buffers.reserve(16);
+    while (is_running_) {
+        assert(new_buffer1 && new_buffer1->size() == 0);
+        assert(new_buffer2 && new_buffer2->size() == 0);
+        assert(buffers.empty());
 
         {
-            LockGuard lock(mutex_);
-            if (buffers_.empty())  // unusual usage!
-            {
-                cond_.waitForSeconds(flushInterval_);
+            locker::LockGuard lock(mutex_);
+            if (buffers_.empty()) {
+                condition_.wait_for_seconds(flush_interval_);
             }
-            buffers_.push_back(currentBuffer_);
-            currentBuffer_.reset();
+            buffers_.push_back(current_buffer_);
+            current_buffer_.reset();
 
-            currentBuffer_ = std::move(newBuffer1);
-            buffersToWrite.swap(buffers_);
-            if (!nextBuffer_) {
-                nextBuffer_ = std::move(newBuffer2);
+            current_buffer_ = std::move(new_buffer1);
+            buffers.swap(buffers_);
+            if (!next_buffer_) {
+                next_buffer_ = std::move(new_buffer2);
             }
         }
+        assert(!buffers.empty());
 
-        assert(!buffersToWrite.empty());
-
-        if (buffersToWrite.size() > 25) {
-            // char buf[256];
-            // snprintf(buf, sizeof buf, "Dropped log messages at %s, %zd larger
-            // buffers\n",
-            //          Timestamp::now().toFormattedString().c_str(),
-            //          buffersToWrite.size()-2);
-            // fputs(buf, stderr);
-            // output.Append(buf, static_cast<int>(strlen(buf)));
-            buffersToWrite.erase(buffersToWrite.begin() + 2,
-                                 buffersToWrite.end());
+        if (buffers.size() > 25) {
+            buffers.erase(buffers.begin() + 2, buffers.end());
         }
 
-        for (size_t i = 0; i < buffersToWrite.size(); ++i) {
-            // FIXME: use unbuffered stdio FILE ? or use ::writev ?
-            output.Append(buffersToWrite[i]->data(),
-                          buffersToWrite[i]->length());
+        for (size_t i = 0; i < buffers.size(); ++i) {
+            log_file.Write(buffers[i]->buffer(), buffers[i]->size());
         }
 
-        if (buffersToWrite.size() > 2) {
+        if (buffers.size() > 2) {
             // drop non-bzero-ed buffers, avoid trashing
-            buffersToWrite.resize(2);
+            buffers.resize(2);
         }
 
-        if (!newBuffer1) {
-            assert(!buffersToWrite.empty());
-            newBuffer1 = buffersToWrite.back();
-            buffersToWrite.pop_back();
-            newBuffer1->reset();
+        if (!new_buffer1) {
+            assert(!buffers.empty());
+            new_buffer1 = buffers.back();
+            buffers.pop_back();
+            new_buffer1->reset();
         }
 
-        if (!newBuffer2) {
-            assert(!buffersToWrite.empty());
-            newBuffer2 = buffersToWrite.back();
-            buffersToWrite.pop_back();
-            newBuffer2->reset();
+        if (!new_buffer2) {
+            assert(!buffers.empty());
+            new_buffer2 = buffers.back();
+            buffers.pop_back();
+            new_buffer2->reset();
         }
 
-        buffersToWrite.clear();
-        output.flush();
+        buffers.clear();
+        log_file.Flush();
     }
-    output.flush();
 }
+
+}  // namespace log

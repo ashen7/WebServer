@@ -4,6 +4,8 @@
 #include <functional>
 #include <vector>
 
+#include "log/logging.h"
+
 namespace event {
 
 //绑定线程函数，也就是Loop
