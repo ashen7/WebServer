@@ -24,7 +24,7 @@ class Timer {
     //是否到期
     bool is_expired();
     //释放http
-    void Clear();
+    void Release();
        
     //得到到期时间
     int expire_time() const {

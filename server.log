@@ -1,0 +1,91 @@
+2021-02-01 20:14:26
+ -- /home/yipeng/workspace/web_server/src/server/web_server.cpp:72[Info]New connection from 192.168.110.19:32988, sockfd: 18
+2021-02-01 20:14:26
+ -- /home/yipeng/workspace/web_server/src/server/web_server.cpp:72[Info]New connection from 192.168.110.19:32988, sockfd: 1
+2021-02-01 20:14:26
+ -- /home/yipeng/workspace/web_server/src/server/web_server.cpp:77[Error]Accept failed!
+2021-02-01 20:14:26
+ -- /home/yipeng/workspace/web_server/src/http/http_connection.cpp:61[Debug]HTTP Request: GET / HTTP/1.1
+Host: 192.168.110.19:8888
+User-Agent: curl/7.58.0
+Accept: */*
+
+
+2021-02-01 21:07:12 /home/yipeng/workspace/web_server/src/server/web_server.cpp:72 [Info]: New connection from 192.168.110.19:34684, sockfd: 18
+2021-02-01 21:07:12 /home/yipeng/workspace/web_server/src/server/web_server.cpp:72 [Info]: New connection from 192.168.110.19:34686, sockfd: 20
+2021-02-01 21:07:12 /home/yipeng/workspace/web_server/src/server/web_server.cpp:72 [Info]: New connection from 192.168.110.19:34686, sockfd: 1
+2021-02-01 21:07:12 /home/yipeng/workspace/web_server/src/server/web_server.cpp:77 [Error]: Accept failed!
+2021-02-01 21:07:12 /home/yipeng/workspace/web_server/src/http/http_connection.cpp:62 [Debug]: Request: GET / HTTP/1.1
+Host: 192.168.110.19:8888
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8,en;q=0.7
+
+
+2021-02-01 21:07:12 /home/yipeng/workspace/web_server/src/http/http_connection.cpp:62 [Debug]: Request: GET /favicon.ico HTTP/1.1
+Host: 192.168.110.19:8888
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36
+Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+Referer: http://192.168.110.19:8888/
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8,en;q=0.7
+
+
+2021-02-01 21:20:25 web_server.cpp:72 [Info]: New connection from 192.168.110.19:35156, sockfd: 18
+2021-02-01 21:20:25 web_server.cpp:72 [Info]: New connection from 192.168.110.19:35158, sockfd: 20
+2021-02-01 21:20:25 web_server.cpp:72 [Info]: New connection from 192.168.110.19:35158, sockfd: 1
+2021-02-01 21:20:25 web_server.cpp:77 [Error]: Accept failed!
+2021-02-01 21:20:25 http_connection.cpp:62 [Debug]: Request: GET / HTTP/1.1
+Host: 192.168.110.19:8888
+Connection: keep-alive
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8,en;q=0.7
+
+
+2021-02-01 21:20:25 http_connection.cpp:62 [Debug]: Request: GET /favicon.ico HTTP/1.1
+Host: 192.168.110.19:8888
+Connection: keep-alive
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36
+Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+Referer: http://192.168.110.19:8888/
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8,en;q=0.7
+
+
+2021-02-01 21:33:13 web_server.cpp:72 [Info]: New connection from 192.168.110.19:35496, sockfd: 18
+2021-02-01 21:33:13 web_server.cpp:72 [Info]: New connection from 192.168.110.19:35498, sockfd: 20
+2021-02-01 21:33:13 http_connection.cpp:62 [Debug]: Request GET / HTTP/1.1
+Host: 192.168.110.19:8888
+Connection: keep-alive
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8,en;q=0.7
+
+
+2021-02-01 21:33:13 web_server.cpp:72 [Info]: New connection from 192.168.110.19:35498, sockfd: 1
+2021-02-01 21:33:13 web_server.cpp:77 [Error]: Accept failed!
+2021-02-01 21:33:13 http_connection.cpp:62 [Debug]: Request GET /favicon.ico HTTP/1.1
+Host: 192.168.110.19:8888
+Connection: keep-alive
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36
+Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+Referer: http://192.168.110.19:8888/
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8,en;q=0.7
+
+

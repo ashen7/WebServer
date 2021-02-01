@@ -34,7 +34,7 @@ static size_t IntToString(char buffer[], T number) {
         *buf++ = '-';
     }
     *buf = '\0';
-    //前面是从个位开始往上算的 ，这里要反转过来
+    //前面是从个位开始往上算的 ，这里要反转过来(begin, end)
     std::reverse(buffer, buf);
 
     return buf - buffer;
@@ -51,9 +51,9 @@ void LogStream::FormatInt(T number) {
 }
 
 //重载输出流运算符 bool型
-LogStream& LogStream::operator<<(bool value) {
-        Write(value ? "1" : "0", 1);
-        return *this;
+LogStream& LogStream::operator<<(bool express) {
+    Write(express ? "1" : "0", 1);
+    return *this;
 }
 
 //重载输出流运算符 整形
@@ -97,22 +97,22 @@ LogStream& LogStream::operator<<(unsigned long long number) {
     return *this;
 }
 
-LogStream& LogStream::operator<<(float value) {
-    *this << static_cast<double>(value);
+LogStream& LogStream::operator<<(float number) {
+    *this << static_cast<double>(number);
     return *this;
 }
 
-LogStream& LogStream::operator<<(double value) {
+LogStream& LogStream::operator<<(double number) {
     if (buffer_.capacity() >= kMaxNumberSize) {
-        int size = snprintf(buffer_.current_buffer(), kMaxNumberSize, "%.12g", value);
+        int size = snprintf(buffer_.current_buffer(), kMaxNumberSize, "%.12g", number);
         buffer_.add(size);
     }
     return *this;
 }
 
-LogStream& LogStream::operator<<(long double value) {
+LogStream& LogStream::operator<<(long double number) {
     if (buffer_.capacity() >= kMaxNumberSize) {
-        int size = snprintf(buffer_.current_buffer(), kMaxNumberSize, "%.12Lg", value);
+        int size = snprintf(buffer_.current_buffer(), kMaxNumberSize, "%.12Lg", number);
         buffer_.add(size);
     }
     return *this;

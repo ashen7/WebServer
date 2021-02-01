@@ -31,7 +31,7 @@ class EventLoop {
     //停止Loop
     void StopLoop();
 
-    //如果当前线程就是创建此EventLoop的线程 就调用callback 否则就放入等待执行函数区
+    //如果当前线程就是创建此EventLoop的线程 就调用callback(关闭连接 EpollDel) 否则就放入等待执行函数区
     void RunInLoop(Function&& func);
     //把此函数放入等待执行函数区 如果当前是跨线程 或者正在调用等待的函数则唤醒
     void QueueInLoop(Function&& func);

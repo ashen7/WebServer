@@ -10,6 +10,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "log/logging.h"
+
 namespace utility {
 //最大buffer size
 const int MAX_BUFFER_SIZE = 4096;
@@ -67,23 +69,20 @@ void HandlePipeSignal() {
 int SocketListen(int port) {
     // 检查port值，取正确区间范围
     if (port < 0 || port > 65535) {
-        perror("port error");
-        exit(1);
+        LOG(FATAL) << "Port error";
     }
 
     // 创建socket(IPv4 + TCP)，返回监听描述符
     int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd == -1) {
-        perror("create listen socket error");
-        exit(1);
+        LOG(FATAL) << "Create listen socket error, " << strerror(errno);
     }
 
     // 消除bind时"Address already in use"错误
     int flag = 1;
     if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) == -1) {
-        perror("set socket option error");
+        LOG(FATAL) << "Set socket option error, " << strerror(errno);
         close(listen_fd);
-        exit(1);
     }
 
     // 绑定服务器的ip和端口
@@ -96,23 +95,20 @@ int SocketListen(int port) {
     //主机字节序转网络字节序  
     server_addr.sin_port = htons((unsigned short)port);
     if (bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
-        perror("bind address error");
+        LOG(FATAL) << "Bind address error, " << strerror(errno);
         close(listen_fd);
-        exit(1);
     }
 
     // 开始监听端口，最大等待队列长为LISTENQ
     if (listen(listen_fd, 2048) == -1) {
-        perror("listen port error");
+        LOG(FATAL) << "Listen port error, " << strerror(errno);
         close(listen_fd);
-        exit(1);
     }
 
     // 无效监听描述符
     if (listen_fd == -1) {
-        perror("invalid listen socket");
+        LOG(FATAL) << "Invalid listen socket, " << strerror(errno);
         close(listen_fd);
-        exit(1);
     }
 
     return listen_fd;
@@ -163,7 +159,7 @@ int Read(int fd, std::string& read_buffer, bool& is_read_zero_bytes) {
                 //EAGAIN表明数据读完了 
                 return read_sum_bytes;
             } else {
-                perror("read error");
+                LOG(ERROR) << "Read from sockfd error, " << strerror(errno);
                 return -1;
             }
         } else if (read_bytes == 0) {
@@ -193,7 +189,7 @@ int Read(int fd, std::string& read_buffer) {
                 //EAGAIN表明数据读完了 
                 return read_sum_bytes;
             } else {
-                perror("read error");
+                LOG(ERROR) << "Read from sockfd error, " << strerror(errno);
                 return -1;
             }
         } else if (read_bytes == 0) {

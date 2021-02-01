@@ -25,7 +25,7 @@ Timer::Timer(Timer& timer)
       expire_time_(0) {
 }
 
-//如果http没有释放 就调用Close关闭
+//删除定时器时 它所绑定的http(connect_fd, EpollDel)也就关闭了
 Timer::~Timer() {
     if (http_connection_) {
         http_connection_->HandleClose();
@@ -53,7 +53,7 @@ bool Timer::is_expired() {
 }
 
 //释放http
-void Timer::Clear() {
+void Timer::Release() {
     http_connection_.reset();
     is_deleted_ = true;
 }

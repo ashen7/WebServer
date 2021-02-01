@@ -23,22 +23,22 @@ class FileUtils {
         fclose(fp_);
     }
 
-    // write 会向文件写
+    //写日志到文件
     void Write(const char* single_log, const size_t size) {
         size_t write_size = fwrite_unlocked(single_log, 1, size, fp_);
-        size_t remain = size - write_size;
+        //剩余size
+        size_t remain_size = size - write_size;
         //如果一次没写完 就继续写
-        while (remain > 0) {
-            size_t x = fwrite_unlocked(single_log + write_size, 1, remain, fp_);
-            if (x == 0) {
-                int error = ferror(fp_);
-                if (error) {
+        while (remain_size > 0) {
+            size_t bytes = fwrite_unlocked(single_log + write_size, 1, remain_size, fp_);
+            if (bytes == 0) {
+                if (ferror(fp_)) {
                     fprintf(stderr, "FileUtils::append() failed !\n");
                 }
                 break;
             }
-            write_size += x;
-            remain = size - write_size;
+            write_size += bytes;
+            remain_size = size - write_size;
         }
     }
 
@@ -51,7 +51,7 @@ class FileUtils {
     char buffer_[64 * 1024];
 };
 
-// TODO: 提供自动归档功能
+// 日志文件 封装了FileUtils
 class LogFile : utility::NonCopyAble {
  public:
     // 每写flush_every_n次，就会flush一次
@@ -66,6 +66,7 @@ class LogFile : utility::NonCopyAble {
     ~LogFile() {
     }
 
+    //写日志到文件
     void Write(const char* single_log, int size) {
         locker::LockGuard lock(mutex_);
         {
@@ -87,8 +88,6 @@ class LogFile : utility::NonCopyAble {
     }
 
  private:
-
- private:
     const std::string file_name_;
     const int flush_every_n_;
     int count_;
@@ -99,36 +98,20 @@ class LogFile : utility::NonCopyAble {
 class AsyncLogging : utility::NonCopyAble {
  public:
     AsyncLogging(const std::string file_name, int flush_interval = 2);
-    ~AsyncLogging() {
-        if (is_running_) {
-            Stop();
-        }
-    }
+    ~AsyncLogging();
 
-    void Write(const char* single_log, int size);
-
-    //开始线程
-    void Start() {
-        is_running_ = true;
-        thread_.Start();
-        count_down_latch_.wait();
-    }
-
-    //停止线程
-    void Stop() {
-        is_running_ = false;
-        condition_.notify();
-        thread_.Join();
-    }
+    void Write(const char* single_log, int size, bool is_quit = false);   //将日志写入buffer输出缓冲区中
+    void Start();    //开始线程
+    void Stop();     //停止线程
 
  private:
-    void Worker();  //线程函数
+    void Worker();  //线程函数 将buffer的数据写入日志文件
 
  private:
-    typedef FixedBuffer<kLargeBufferSize> Buffer;
+    using Buffer = FixedBuffer<kLargeBufferSize>;
     
     std::string file_name_;
-    const int flush_interval_;
+    const int timeout_;
     bool is_running_;
 
     std::shared_ptr<Buffer> current_buffer_;
@@ -136,7 +119,7 @@ class AsyncLogging : utility::NonCopyAble {
     std::vector<std::shared_ptr<Buffer>> buffers_;
 
     thread::Thread thread_;
-    locker::MutexLock mutex_;
+    mutable locker::MutexLock mutex_;
     locker::ConditionVariable condition_;
     utility::CountDownLatch count_down_latch_;
 };

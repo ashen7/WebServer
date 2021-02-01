@@ -11,15 +11,31 @@
 namespace log {
 class Logging {
  public:
-    Logging(const char* file_name, int line);
+    Logging(const char* file_name, int line, int level);
     ~Logging();
 
-    static std::string file_name() {
-        return file_name_;
+    static std::string log_file_name() {
+        return log_file_name_;
     }
 
-    static void set_file_name(std::string file_name) {
-        file_name_ = file_name;
+    static void set_log_file_name(std::string log_file_name) {
+        log_file_name_ = log_file_name;
+    }
+
+    static bool open_log() {
+        return open_log_;
+    }
+
+    static void set_open_log(bool open_log) {
+        open_log_ = open_log;
+    }
+
+    static void set_log_to_stderr(bool log_to_stderr) {
+        log_to_stderr_ = log_to_stderr;
+    }
+
+    static void set_open_log_color(bool open_log_color) {
+        open_log_color_ = open_log_color;
     }
 
     LogStream& stream() {
@@ -29,22 +45,45 @@ class Logging {
  private:
     class Impl {
      public:
-        Impl(const char* file_name, int line);
+        Impl(const char* file_name, int line, int level);
+        void FormatLevel();
         void FormatTime();
 
         LogStream stream_;
-        int line_;
         std::string file_name_;
+        int line_;
+        int level_;
+        std::string level_str_;
+        std::string log_color_;
+        char time_str_[26];
+        bool is_fatal_;
     };
 
  private:
-    static std::string file_name_;
+    static std::string log_file_name_;
+    static bool open_log_;
+    static bool log_to_stderr_;
+    static bool open_log_color_;
+
     Impl impl_;
 };
 
 }  // namespace log
 
+enum LogLevel {
+    DEBUG = 0,
+    INFO,
+    WARNING,
+    ERROR,
+    FATAL
+};
+
 //宏定义
-#define LOG log::Logging(__FILE__, __LINE__).stream()
+#define LOG(level)  log::Logging(__FILE__, __LINE__, level).stream()
+#define LOG_DEBUG   log::Logging(__FILE__, __LINE__, DEBUG).stream()
+#define LOG_INFO    log::Logging(__FILE__, __LINE__, INFO).stream()
+#define LOG_WARNING log::Logging(__FILE__, __LINE__, WARNING).stream()
+#define LOG_ERROR   log::Logging(__FILE__, __LINE__, ERROR).stream()
+#define LOG_FATAL   log::Logging(__FILE__, __LINE__, FATAL).stream()
 
 #endif  // LOG_LOGGING_H_

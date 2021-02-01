@@ -39,7 +39,7 @@ std::vector<std::shared_ptr<Channel>> Poller::Poll() {
         int events_num = epoll_wait(epoll_fd_, &(*ready_events_.begin()), 
                                     kMaxEventsNum, kEpollTimeOut);
         if (events_num < 0) {
-            perror("epoll wait error");
+            LOG(ERROR) << "Epoll wait error, " << strerror(errno);
         }
         
         //遍历就绪事件
@@ -51,14 +51,14 @@ std::vector<std::shared_ptr<Channel>> Poller::Poll() {
 
             auto ready_channel = ready_channels_[fd];
             if (ready_channel) {
-                //给fd设置就绪的事件
+                //给channel设置就绪的事件
                 ready_channel->set_revents(events);
-                //给fd设置监听的事件(0表示无监听事件)
+                //重置channel监听的事件 
                 ready_channel->set_events(0);
                 //添加到就绪channels中
                 ready_channels.push_back(ready_channel);
             } else {
-                // LOG << "Channel is invalid";
+                LOG(WARNING) << "Channel is invalid";
             }
         }
 
@@ -92,7 +92,7 @@ void Poller::EpollAdd(std::shared_ptr<Channel> channel, int timeout) {
     
     //注册fd以及监听的事件到epoll内核事件表
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) < 0) {
-        perror("epoll add error");
+        LOG(ERROR) << "Epoll add error, " << strerror(errno);
         ready_channels_[fd].reset();
     }
 }
@@ -112,7 +112,7 @@ void Poller::EpollMod(std::shared_ptr<Channel> channel, int timeout) {
         event.data.fd = fd;
         event.events = events;
         if (epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, fd, &event) < 0) {
-            perror("epoll mod error");
+            LOG(ERROR) << "Epoll mod error, " << strerror(errno);
             ready_channels_[fd].reset();
         }
     }
@@ -127,7 +127,7 @@ void Poller::EpollDel(std::shared_ptr<Channel> channel) {
     event.data.fd = fd;
     event.events = events;
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, &event) < 0) {
-        perror("epoll del error");
+        LOG(ERROR) << "Epoll del error, " << strerror(errno);
     }
     ready_channels_[fd].reset();
     http_connections_[fd].reset();
@@ -140,7 +140,7 @@ void Poller::AddTimer(std::shared_ptr<Channel> channel, int timeout) {
     if (http_connection) {
         timer_heap_.AddTimer(http_connection, timeout);
     } else {
-        // LOG << "timer add fail";
+        LOG(WARNING) << "Timer add failed";
     }
 }
 

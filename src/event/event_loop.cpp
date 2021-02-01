@@ -48,10 +48,10 @@ EventLoop::~EventLoop() {
 }
 
 //开始事件循环 调用该函数的线程必须是该EventLoop所在线程 
-//1. epoll_wait阻塞 等待就绪事件
+//1. epoll_wait阻塞 等待就绪事件(没有注册其他fd时，可以通过event_fd来异步唤醒)
 //2. 处理每个就绪事件
-//3. 执行正在等待的函数
-//4. 处理超时
+//3. 执行正在等待的函数(fd注册到epoll内核事件表)
+//4. 处理超时事件 到期了就从定时器小根堆中删除
 void EventLoop::Loop() {
     //判断是否在当前线程
     assert(!is_looping_);
@@ -63,15 +63,15 @@ void EventLoop::Loop() {
         //epoll_wait阻塞 等待就绪事件
         auto ready_channels = poller_->Poll();
         is_event_handling_ = true;
-        //处理每个就绪事件（读事件就去处理读，写事件就处理写，连接事件就处理连接，错误事件就处理错误）
+        //处理每个就绪事件(不同channel绑定了不同的callback)
         for (auto& channel : ready_channels) {
             channel->HandleEvents();
         }
 
         is_event_handling_ = false;
-        //执行正在等待的函数
+        //执行正在等待的函数(fd注册到epoll内核事件表)
         PefrormPendingFunctions();
-        //处理超时
+        //处理超时事件 到期了就从定时器小根堆中删除
         poller_->HandleExpire();
     }
 
@@ -82,28 +82,6 @@ void EventLoop::Loop() {
 void EventLoop::StopLoop() {
     is_stop_ = true;
     if (!is_in_loop_thread()) {
-        WakeUp();
-    }
-}
-
-//如果当前线程就是创建此EventLoop的线程 就调用callback 否则就放入等待执行函数区
-void EventLoop::RunInLoop(Function&& func) {
-    if (is_in_loop_thread()) {
-        func();
-    } else {
-        QueueInLoop(std::move(func));
-    }
-}
-
-// 把此函数放入等待执行函数区 如果当前是跨线程 或者正在调用等待的函数则唤醒
-void EventLoop::QueueInLoop(Function&& func) {
-    {
-        locker::LockGuard lock(mutex_);
-        pending_functions_.emplace_back(std::move(func));
-    }
-
-    //如果跨线程调用 或者当前loop正在运行等待的函数 就唤醒（向event_fd中写入数据）
-    if (!is_in_loop_thread() || is_calling_pending_functions_) {
         WakeUp();
     }
 }
@@ -125,12 +103,34 @@ void EventLoop::PefrormPendingFunctions() {
     is_calling_pending_functions_ = false;
 }
 
+// 把此函数放入等待执行函数区 如果当前是跨线程 或者正在调用等待的函数则唤醒
+void EventLoop::QueueInLoop(Function&& func) {
+    {
+        locker::LockGuard lock(mutex_);
+        pending_functions_.emplace_back(std::move(func));
+    }
+
+    //如果跨线程调用 或者当前loop正在运行等待的函数 异步唤醒epoll_wait（向event_fd中写入数据触发可读事件）
+    if (!is_in_loop_thread() || is_calling_pending_functions_) {
+        WakeUp();
+    }
+}
+
+//如果当前线程就是创建此EventLoop的线程 就调用callback(关闭连接 EpollDel) 否则就放入等待执行函数区
+void EventLoop::RunInLoop(Function&& func) {
+    if (is_in_loop_thread()) {
+        func();
+    } else {
+        QueueInLoop(std::move(func));
+    }
+}
+
 //异步唤醒SubLoop的epoll_wait, 向event_fd中写入数据1
 void EventLoop::WakeUp() {
     uint64_t value = 1;
     ssize_t write_size = utility::Write(event_fd_, (char*)(&value), sizeof(value));
     if (write_size != sizeof(value)) {
-        // LOG << "EventLoop::WakeUp() writes " << n << " bytes instead of 8";
+        LOG(WARNING) << "EventLoop::WakeUp() writes " << write_size << " bytes instead of 8";
     }
 }
 
@@ -139,7 +139,7 @@ void EventLoop::HandleRead() {
     uint64_t value = 1;
     ssize_t read_size = utility::Read(event_fd_, &value, sizeof(value));
     if (read_size != sizeof(value)) {
-        // LOG << "EventLoop::HandleRead() reads " << n << " bytes instead of 8";
+        LOG(WARNING) << "EventLoop::HandleRead() reads " << read_size << " bytes instead of 8";
     }
 
     wakeup_channel_->set_events(EPOLLIN | EPOLLET);
@@ -157,8 +157,7 @@ int EventLoop::CreateEventfd() {
     //设置非阻塞套接字
     int event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (eventfd < 0) {
-        // LOG << "Failed in eventfd";
-        exit(1);
+        LOG(FATAL) << "Create eventfd failed";
     }
 
     return event_fd;

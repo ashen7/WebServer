@@ -405,69 +405,122 @@ static void Worker(const char* server_host, const int server_port, const char* r
 	}
 	alarm(request_time);
 
-	goto_next:
-		while(true) {
-			if (timeout) {
-				//到收到闹钟信号会使timeout为true 此时子进程工作应该结束了(每个子进程都有一个timeout)
-				if (request_failed_count > 0) {
-					request_failed_count--;
-				}
-				return;
-			}
+    if (is_keep_alive) {
+        //一直到成功建立连接才退出while
+        while ((client_sockfd == ConnectServer(host, port)) == -1);
+keep_alive:
+        while(true) {
+            if (timeout) {
+                //到收到闹钟信号会使timeout为true 此时子进程工作应该结束了(每个子进程都有一个timeout)
+                if (request_failed_count > 0) {
+                    request_failed_count--;
+                }
+                return;
+            }
 
-			//与服务器建立连接
-			client_sockfd = ConnectServer(host, port);                          
-			if (client_sockfd < 0) { 
-				request_failed_count++; 
-				continue;
-			} 
+            if (client_sockfd < 0) { 
+                request_failed_count++; 
+                continue;
+            } 
 
-			//向服务器发送请求报文
-			if (request_size != write(client_sockfd, request, request_size)) {
-				request_failed_count++; 
-				close(client_sockfd);
-				continue;
-			}
+            //向服务器发送请求报文
+            if (request_size != write(client_sockfd, request, request_size)) {
+                request_failed_count++; 
+                close(client_sockfd);
+                //发送请求失败 要重新创建套接字
+                while ((client_sockfd == ConnectServer(host, port)) == -1);
+                continue;
+            }
 
-			//http0.9特殊处理 
-			if (http_version == 0) {
-				if (shutdown(client_sockfd, 1)) { 
-					request_failed_count++;
-					close(client_sockfd);
-					continue;
-				}
-			}
+            //没有设置force时 默认等到服务器的回复
+            if (force == 0)  {
+                //keep-alive一个进程只创建一个套接字 收发数据都用这个套接字
+                //读服务器返回的响应报文到response_buf中
+                while (true) {
+                    if (timeout) {
+                        break;
+                    } 
+                    int read_bytes = read(client_sockfd, response_buf, response_size);
+                    if (read_bytes < 0) { 
+                        request_failed_count++;
+                        close(client_sockfd);
+                        //读取响应失败 不用重新创套接字 重新发一次请求即可
+                        goto keep_alive;  
+                    } else if (read_bytes == 0) {
+                        //读完了就退出，发送下一次请求
+                        break;
+                    } else {
+                        response_total_bytes += read_bytes;
+                    }
+                }
+            }
+            request_success_count++;
+        }
+    } else {
+not_keep_alive:
+        while(true) {
+            if (timeout) {
+                //到收到闹钟信号会使timeout为true 此时子进程工作应该结束了(每个子进程都有一个timeout)
+                if (request_failed_count > 0) {
+                    request_failed_count--;
+                }
+                return;
+            }
 
-			//没有设置force时 默认等到服务器的回复
-			if (force == 0)  {
-				//读服务器返回的响应报文到response_buf中
-				while (true) {
-					if (timeout) {
-						break;
-					} 
-					int read_bytes = read(client_sockfd, response_buf, response_size);
-					if (read_bytes < 0) { 
-						request_failed_count++;
-						close(client_sockfd);
-						//这里读失败想退出来继续创建套接字 去请求服务器,因为有两层循环 所以用goto
-						goto goto_next;  
-					} else {
-						//读完了
-						if (read_bytes == 0) {
-							break;
-						} else {
-							response_total_bytes += read_bytes;
-						}
-					}
-				}
-			}
-			
-			if (close(client_sockfd)) {
-				request_failed_count++;
-				continue;
-			}
-			request_success_count++;
-		}
+            //与服务器建立连接
+            client_sockfd = ConnectServer(host, port);                          
+            if (client_sockfd < 0) { 
+                request_failed_count++; 
+                continue;
+            } 
+
+            //向服务器发送请求报文
+            if (request_size != write(client_sockfd, request, request_size)) {
+                request_failed_count++; 
+                close(client_sockfd);
+                continue;
+            }
+
+            //http0.9特殊处理 
+            if (http_version == 0) {
+                if (shutdown(client_sockfd, 1)) { 
+                    request_failed_count++;
+                    close(client_sockfd);
+                    continue;
+                }
+            }
+
+            //没有设置force时 默认等到服务器的回复
+            if (force == 0)  {
+                //not-keey-alive 每次发送完请求，读取了响应后就关闭套接字
+                //下次创建新套接字 发送请求 读取响应
+                while (true) {
+                    if (timeout) {
+                        break;
+                    } 
+                    int read_bytes = read(client_sockfd, response_buf, response_size);
+                    if (read_bytes < 0) { 
+                        request_failed_count++;
+                        close(client_sockfd);
+                        //这里读失败想退出来继续创建套接字 去请求服务器,因为有两层循环 所以用goto
+                        goto not_keep_alive;  
+                    } else if (read_bytes == 0) {
+                        //读完了
+                        break;
+                    } else {
+                        response_total_bytes += read_bytes;
+                    }
+                }
+            }
+            
+            //一次发送 接收完成后 关闭套接字
+            if (close(client_sockfd)) {
+                request_failed_count++;
+                continue;
+            }
+            request_success_count++;
+        }
+    }
 }
 
 //父进程的作用: 创建子进程 读子进程测试到的数据 然后处理

@@ -81,23 +81,23 @@ class Channel {
     }
 
     bool update_last_events() {
-        bool events_changed = (last_events_ == events_);
+        bool is_events_changed = (last_events_ == events_);
         last_events_ = events_;
-        return events_changed;
+        return is_events_changed;
     }
 
  private:
     int fd_;            //Channel的fd
     int events_;        //Channel正在监听的事件
     int revents_;       //返回的就绪事件
-    int last_events_;   //上一个事件
+    int last_events_;   //上一此事件（主要用于记录如果本次事件和上次事件一样 就没必要调用epoll_mod）
 
     //weak_ptr是一个观测者（不会增加或减少引用计数）,同时也没有重载->,和*等运算符 所以不能直接使用
     //可以通过lock函数得到它的shared_ptr（对象没销毁就返回，销毁了就返回空shared_ptr）
     //expired函数判断当前对象是否销毁了 
     std::weak_ptr<http::HttpConnection> holder_;  
 
-    EventCallBack read_handler_;
+    EventCallBack read_handler_;   
     EventCallBack write_handler_;
     EventCallBack update_handler_;
     EventCallBack error_handler_;
