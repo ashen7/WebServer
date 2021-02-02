@@ -6,9 +6,9 @@ url=http://${server_ip}:${server_port}/echo
 #子进程数量
 process_num=1
 #请求时间(单位s)
-request_time=10
+request_time=20
 #keep-alive
-is_keep_alive=0
+is_keep_alive=1
 
 #编译
 make clean && make -j8

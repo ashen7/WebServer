@@ -15,6 +15,10 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include <iostream>
+using std::cout;
+using std::endl;
+
 //http请求方法
 #define METHOD_GET 0
 #define METHOD_HEAD 1
@@ -38,9 +42,9 @@ int pipeline[2];                  //用于父子进程通信的管道
 char host[MAXHOSTNAMELEN];        //存放目标服务器的网络地址
 char request_buf[REQUEST_SIZE];   //存放请求报文的字节流
 
-int request_success_count = 0;    //请求成功的次数
-int request_failed_count = 0;     //失败的次数
-int response_total_bytes = 0;     //服务器响应总字节数
+int success_count = 0;    //请求成功的次数
+int failed_count = 0;     //失败的次数
+int total_bytes = 0;     //服务器响应总字节数
 
 volatile bool timeout = false;    //子进程访问服务器 是否超时
 
@@ -401,36 +405,44 @@ static void Worker(const char* server_host, const int server_port, const char* r
 	signal_action.sa_handler = AlarmHandler;
 	signal_action.sa_flags = 0;
 	if (sigaction(SIGALRM, &signal_action, NULL)) {
-		exit(3);
+		exit(1);
 	}
 	alarm(request_time);
 
     if (is_keep_alive) {
         //一直到成功建立连接才退出while
-        while ((client_sockfd == ConnectServer(host, port)) == -1);
+        while (client_sockfd == -1) {
+            client_sockfd = ConnectServer(host, port);
+        }
+        //cout << "1. 建立连接（TCP三次握手）, sockfd: " << client_sockfd << endl;
 keep_alive:
         while(true) {
             if (timeout) {
                 //到收到闹钟信号会使timeout为true 此时子进程工作应该结束了(每个子进程都有一个timeout)
-                if (request_failed_count > 0) {
-                    request_failed_count--;
+                if (failed_count > 0) {
+                    failed_count--;
                 }
                 return;
             }
 
             if (client_sockfd < 0) { 
-                request_failed_count++; 
+                failed_count++; 
                 continue;
             } 
 
             //向服务器发送请求报文
             if (request_size != write(client_sockfd, request, request_size)) {
-                request_failed_count++; 
+                failed_count++; 
                 close(client_sockfd);
                 //发送请求失败 要重新创建套接字
-                while ((client_sockfd == ConnectServer(host, port)) == -1);
+                //cout << "2. 向服务器发送请求报文失败，重新建立连接" << endl;
+                client_sockfd = -1;
+                while (client_sockfd == -1) {
+                    client_sockfd = ConnectServer(host, port);
+                }
                 continue;
             }
+            //cout << "2. 向服务器发送请求报文成功" << endl;
 
             //没有设置force时 默认等到服务器的回复
             if (force == 0)  {
@@ -441,28 +453,30 @@ keep_alive:
                         break;
                     } 
                     int read_bytes = read(client_sockfd, response_buf, response_size);
+                    //cout << "3. 读服务器的响应报文" << endl;
                     if (read_bytes < 0) { 
-                        request_failed_count++;
+                        //cout << "4. 读取失败, sockfd: " << client_sockfd << endl;
+                        failed_count++;
                         close(client_sockfd);
                         //读取响应失败 不用重新创套接字 重新发一次请求即可
                         goto keep_alive;  
-                    } else if (read_bytes == 0) {
-                        //读完了就退出，发送下一次请求
-                        break;
                     } else {
-                        response_total_bytes += read_bytes;
+                        //cout << "4. 成功读取" << read_bytes << "个字节, sockfd: " << client_sockfd << endl;
+                        total_bytes += read_bytes;
+                        break;
                     }
                 }
             }
-            request_success_count++;
+            success_count++;
+            //cout << "当前成功：" << success_count << ", 失败：" << failed_count << ", 总字节：" << total_bytes << endl; 
         }
     } else {
 not_keep_alive:
         while(true) {
             if (timeout) {
                 //到收到闹钟信号会使timeout为true 此时子进程工作应该结束了(每个子进程都有一个timeout)
-                if (request_failed_count > 0) {
-                    request_failed_count--;
+                if (failed_count > 0) {
+                    failed_count--;
                 }
                 return;
             }
@@ -470,21 +484,23 @@ not_keep_alive:
             //与服务器建立连接
             client_sockfd = ConnectServer(host, port);                          
             if (client_sockfd < 0) { 
-                request_failed_count++; 
+                failed_count++; 
                 continue;
             } 
+            //cout << "1. 建立连接（TCP三次握手）, sockfd: " << client_sockfd << endl;
 
             //向服务器发送请求报文
             if (request_size != write(client_sockfd, request, request_size)) {
-                request_failed_count++; 
+                failed_count++; 
                 close(client_sockfd);
                 continue;
             }
+            //cout << "2. 向服务器发送请求报文" << endl;
 
             //http0.9特殊处理 
             if (http_version == 0) {
                 if (shutdown(client_sockfd, 1)) { 
-                    request_failed_count++;
+                    failed_count++;
                     close(client_sockfd);
                     continue;
                 }
@@ -499,26 +515,29 @@ not_keep_alive:
                         break;
                     } 
                     int read_bytes = read(client_sockfd, response_buf, response_size);
+                    //cout << "3. 读服务器的响应报文" << endl;
                     if (read_bytes < 0) { 
-                        request_failed_count++;
+                        //cout << "4. 读取失败, sockfd: " << client_sockfd << endl;
+                        failed_count++;
                         close(client_sockfd);
                         //这里读失败想退出来继续创建套接字 去请求服务器,因为有两层循环 所以用goto
                         goto not_keep_alive;  
-                    } else if (read_bytes == 0) {
-                        //读完了
-                        break;
                     } else {
-                        response_total_bytes += read_bytes;
+                        //cout << "4. 成功读取" << read_bytes << "个字节, sockfd: " << client_sockfd << endl;
+                        total_bytes += read_bytes;
+                        break;
                     }
                 }
             }
             
             //一次发送 接收完成后 关闭套接字
             if (close(client_sockfd)) {
-                request_failed_count++;
+                failed_count++;
+                //cout << "5. 关闭套接字失败" << endl;
                 continue;
             }
-            request_success_count++;
+            success_count++;
+            //cout << "当前成功：" << success_count << ", 失败：" << failed_count << ", 总字节：" << total_bytes << endl; 
         }
     }
 }
@@ -570,8 +589,8 @@ static void StressTest() {
 			perror("管道写端打开失败");
 			exit(1);
 		}
-		//向管道写端写入该子进程在一定时间内请求成功的次数 失败的次数 读取到的服务器响应总字节数
-		fprintf(pipe_fd, "%d %d %d\n", request_success_count, request_failed_count, response_total_bytes);
+		//进程运行完后，向管道写端写入该子进程在这段时间内请求成功的次数 失败的次数 读取到的服务器响应总字节数
+		fprintf(pipe_fd, "%d %d %d\n", success_count, failed_count, total_bytes);
 		//关闭管道写端
 		fclose(pipe_fd);
 
@@ -585,9 +604,18 @@ static void StressTest() {
 		}
 		//因为我们要求数据要及时 所以没有缓冲区是最合适的 
 		setvbuf(pipe_fd, NULL, _IONBF, 0);
-		request_success_count = 0;
-		request_failed_count = 0;
-		response_total_bytes = 0;
+		success_count = 0;
+		failed_count = 0;
+		total_bytes = 0;
+
+        //绑定闹钟信号的回调函数，时间一到 父进程就退出循环
+	    struct sigaction signal_action;
+	    signal_action.sa_handler = AlarmHandler;
+	    signal_action.sa_flags = 0;
+	    if (sigaction(SIGALRM, &signal_action, NULL)) {
+		    exit(1);
+	    }
+	    alarm(request_time + 5);
 
 		while (true) {
 			//从管道读端读取数据
@@ -596,9 +624,9 @@ static void StressTest() {
 				fprintf(stderr, "某个子进程异常\n");
 				break;
 			}
-			request_success_count += req_succ;
-			request_failed_count += req_fail;
-			response_total_bytes += resp_bytes;
+			success_count += req_succ;
+			failed_count += req_fail;
+			total_bytes += resp_bytes;
 			//我们创建了clients_num个子进程 所以要读clients_num多次数据
 			if (--clients_num == 0) {
 				break;
@@ -607,10 +635,9 @@ static void StressTest() {
 		fclose(pipe_fd);
 
 		printf("\n速度: %d 请求/分钟, %d 字节/秒.\n请求: %d 成功, %d 失败\n",
-				(int)((request_success_count + request_failed_count) / (request_time / 60.0f)),
-				(int)(response_total_bytes / (float)request_time),
-				request_success_count,
-				request_failed_count);
+				(int)((success_count + failed_count) / (request_time / 60.0f)),
+				(int)(total_bytes / (float)request_time),
+				success_count, failed_count);
 	}
 }
 
