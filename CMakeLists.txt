@@ -1,9 +1,14 @@
 project(WebServer LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.5.1)
 
+set(DEBUG OFF)
+
 #g++ 编译选项
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DNDEBUG -O3 -W -Wall -Wfatal-errors")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DNDEBUG -O3 -g -Wfatal-errors -Wno-unused-parameter")
+if (${DEBUG} STREQUAL "ON")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DOPEN_LOGGING -DDEBUG -O3 -g -Wfatal-errors -Wno-unused-parameter")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DNDEBUG -O3 -Wfatal-errors -Wno-unused-parameter")
+endif()
 
 #项目根目录
 set(ROOT_DIR .)

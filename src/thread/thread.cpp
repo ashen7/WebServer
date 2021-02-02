@@ -64,7 +64,7 @@ class ThreadData : utility::NonCopyAble {
         current_thread::tls_thread_name = thread_name_.empty() ? "Thread" : thread_name_.c_str();
         prctl(PR_SET_NAME, current_thread::tls_thread_name);
 
-        //执行线程函数(这里的线程函数是event_loop的Loop函数 事件循环)
+        //执行线程函数
         worker_();
         current_thread::tls_thread_name = "finished";
     }

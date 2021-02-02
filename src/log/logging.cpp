@@ -19,7 +19,8 @@ static AsyncLogging* async_logging = nullptr;
 std::string Logging::log_file_name_ = "./web_server.log";
 bool Logging::open_log_ = true;
 bool Logging::log_to_stderr_ = false;
-bool Logging::open_log_color_ = false;
+bool Logging::color_log_to_stderr_ = false;
+int  Logging::min_log_level_ = DEBUG;
 
 //初始化异步日志 并start线程
 void OnceInit() {
@@ -45,28 +46,30 @@ Logging::Logging(const char* file_name, int line, int level)
 }
 
 Logging::~Logging() {
-    //调用LOG时 <<会的日志内容会追加写入stream的buffer中,最后加一个换行符
-    //buffer通过日志的异步线程写入日志文件
-    impl_.stream_ << "\n";
-    const auto& buffer = stream().buffer();
+    if (impl_.level_ >= min_log_level_) {
+        //调用LOG时 <<会的日志内容会追加写入stream的buffer中,最后加一个换行符
+        //buffer通过日志的异步线程写入日志文件
+        impl_.stream_ << "\n";
+        const auto& buffer = stream().buffer();
 
-    //写日志
-    if (open_log_) {
-        WriteLog(buffer.buffer(), buffer.size(), impl_.is_fatal_);
-    }
-    //日志输出到标准错误流
-    if (log_to_stderr_) {
-        if (open_log_color_) {
-            std::cout << impl_.log_color_
-                      << std::string(buffer.buffer(), buffer.size()) 
-                      << COLOR_END;
-        } else {
-            std::cout << std::string(buffer.buffer(), buffer.size());
+        //写日志
+        if (open_log) {
+            WriteLog(buffer.buffer(), buffer.size(), impl_.is_fatal_);
         }
-    }
-    
-    if (impl_.is_fatal_) {
-        abort();
+        //日志输出到标准错误流
+        if (log_to_stderr_) {
+            if (color_log_to_stderr_) {
+                std::cout << impl_.log_color_
+                        << std::string(buffer.buffer(), buffer.size()) 
+                        << COLOR_END;
+            } else {
+                std::cout << std::string(buffer.buffer(), buffer.size());
+            }
+        }
+        
+        if (impl_.is_fatal_) {
+            abort();
+        }
     }
 }
 

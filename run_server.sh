@@ -2,16 +2,21 @@
 
 #服务器绑定端口号
 port=8888               
+
 #日志路径
-log_path=./server.log
+log_file_name=./server.log
 #是否打开日志
-open_log=0     
-#日志输出到标准错误流
+open_log=0   
+#日志也输出到标准错误流
 log_to_stderr=1
 #输出日志颜色
-open_log_color=1
+color_log_to_stderr=1
+#打印的最小日志等级
+min_log_level=4
+
 #数据库连接池
-connection_num=8
+connection_num=6
+
 #线程池
 thread_num=6
 
@@ -29,5 +34,6 @@ rm -rf * && cmake .. && make -j8 && cp web_server ../
 cd ..
 
 ~/tools/flush_core.sh
-./web_server -p $port -t $thread_num -l $log_path \
-             -o $open_log -s $log_to_stderr -c $open_log_color
+./web_server -p $port -t $thread_num -f $log_file_name \
+             -o $open_log -s $log_to_stderr \
+             -c $color_log_to_stderr -l $min_log_level

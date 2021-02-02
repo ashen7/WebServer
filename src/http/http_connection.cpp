@@ -62,7 +62,7 @@ void HttpConnection::HandleRead() {
         bool is_read_zero_bytes = false;
         //读客户端发来的请求数据 存入read_buffer
         int read_bytes = utility::Read(connect_fd_, read_buffer_, is_read_zero_bytes);
-        LOG(DEBUG) << "Request " << read_buffer_;
+        //LOG(DEBUG) << "Request " << read_buffer_;
         if (connection_state_ == DISCONNECTING) {
             read_buffer_.clear();
             break;
@@ -179,6 +179,7 @@ void HttpConnection::HandleWrite() {
     //如果没有发生错误 并且连接没断开 就把写缓冲区的数据 发送给客户端
     if (!is_error_ && connection_state_ != DISCONNECTED) {
         int& events = connect_channel_->events();
+        //LOG(DEBUG) << "Response " << write_buffer_;
         if (utility::Write(connect_fd_, write_buffer_) < 0) {
             LOG(WARNING) << "Send response to client error, " << strerror(errno);
             events = 0;
@@ -237,8 +238,6 @@ void HttpConnection::HandleUpdate() {
 
 //处理错误（返回错误信息）
 void HttpConnection::ReturnErrorMessage(int fd, int error_code, std::string error_message) {
-    //写缓冲区
-    char write_buffer[4096];
     error_message = " " + error_message;
 
     //响应体
@@ -259,10 +258,9 @@ void HttpConnection::ReturnErrorMessage(int fd, int error_code, std::string erro
     response_header += "\r\n";
     
     // 错误处理不考虑write不完的情况
-    sprintf(write_buffer, "%s", response_header.c_str());
-    utility::Write(fd, write_buffer, strlen(write_buffer));
-    sprintf(write_buffer, "%s", response_body.c_str());
-    utility::Write(fd, write_buffer, strlen(write_buffer));
+    write_buffer_ = response_header + response_body;
+    utility::Write(fd, write_buffer_);
+    write_buffer_.clear();
 }
 
 //解析请求行
@@ -481,12 +479,15 @@ ResponseState HttpConnection::BuildResponse() {
 
         // echo test
         if (file_name_ == "echo") {
-            write_buffer_ = "HTTP/1.1 200 OK\r\nContent-type: text/plain\r\n\r\nHello World";
+            //响应体
+            write_buffer_ = "HTTP/1.1 200 OK\r\n";
+            write_buffer_ += "Content-Type: text/html\r\n\r\n";
+            write_buffer_ += "<html>Hello World</html>";
             return RESPONSE_SUCCESS;
         }
 
         // 如果是请求图标 把请求头+图标数据(请求体)写入write_buffer
-        if (file_name_ == "web_server_favicon.ico") {
+        if (file_name_ == "favicon.ico") {
             response_header += "Content-Type: image/png\r\n";
             response_header += "Content-Length: " + std::to_string(sizeof(web_server_favicon)) + "\r\n";
             response_header += "Server: 阿神QAQ Web Server\r\n";
@@ -550,7 +551,6 @@ ResponseState HttpConnection::BuildResponse() {
         //将共享内存里的内容 写入write_buffer
         char* file_address = static_cast<char*>(mmap_address);
         write_buffer_ += std::string(file_address, file_address + file_stat.st_size);
-        LOG(DEBUG) << "Response " << write_buffer_;
         //关闭映射
         munmap(mmap_address, file_stat.st_size);
         return RESPONSE_SUCCESS;

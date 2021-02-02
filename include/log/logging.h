@@ -34,8 +34,12 @@ class Logging {
         log_to_stderr_ = log_to_stderr;
     }
 
-    static void set_open_log_color(bool open_log_color) {
-        open_log_color_ = open_log_color;
+    static void set_color_log_to_stderr(bool color_log_to_stderr) {
+        color_log_to_stderr_ = color_log_to_stderr;
+    }
+
+    static void set_min_log_level(bool min_log_level) {
+        min_log_level_ = min_log_level;
     }
 
     LogStream& stream() {
@@ -63,7 +67,8 @@ class Logging {
     static std::string log_file_name_;
     static bool open_log_;
     static bool log_to_stderr_;
-    static bool open_log_color_;
+    static bool color_log_to_stderr_;
+    static int min_log_level_;
 
     Impl impl_;
 };
@@ -79,11 +84,15 @@ enum LogLevel {
 };
 
 //宏定义
-#define LOG(level)  log::Logging(__FILE__, __LINE__, level).stream()
-#define LOG_DEBUG   log::Logging(__FILE__, __LINE__, DEBUG).stream()
-#define LOG_INFO    log::Logging(__FILE__, __LINE__, INFO).stream()
-#define LOG_WARNING log::Logging(__FILE__, __LINE__, WARNING).stream()
-#define LOG_ERROR   log::Logging(__FILE__, __LINE__, ERROR).stream()
-#define LOG_FATAL   log::Logging(__FILE__, __LINE__, FATAL).stream()
+#ifdef OPEN_LOGGING
+    #define LOG(level) log::Logging(__FILE__, __LINE__, level).stream() 
+    #define LOG_DEBUG   log::Logging(__FILE__, __LINE__, DEBUG).stream()
+    #define LOG_INFO    log::Logging(__FILE__, __LINE__, INFO).stream()
+    #define LOG_WARNING log::Logging(__FILE__, __LINE__, WARNING).stream()
+    #define LOG_ERROR   log::Logging(__FILE__, __LINE__, ERROR).stream()
+    #define LOG_FATAL   log::Logging(__FILE__, __LINE__, FATAL).stream()
+#else
+    #define LOG(level) log::LogStream()
+#endif
 
 #endif  // LOG_LOGGING_H_

@@ -21,7 +21,7 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop* main_loop, int thread_num)
 }
 
 EventLoopThreadPool::~EventLoopThreadPool() {
-    LOG_INFO << "~EventLoopThreadPool()";
+    LOG(DEBUG) << "~EventLoopThreadPool()";
 }
 
 //主线程（主Loop对象）创建event_loop线程池

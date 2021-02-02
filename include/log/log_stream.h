@@ -6,6 +6,7 @@
 #include <string>
 
 #include "utility/noncopyable.h"
+#include "locker/mutex_lock.h"
 
 #define COLOR_END            "\e[0m"
 #define BLACK                "\e[0;30m"
@@ -40,7 +41,7 @@ constexpr int kSmallBufferSize = 4000;
 constexpr int kLargeBufferSize = 4000 * 1000;
 
 //固定的缓冲区
-template <int BufferSize>
+template <int buffer_size>
 class FixedBuffer : utility::NonCopyAble {
  public:
     FixedBuffer() 
@@ -77,7 +78,7 @@ class FixedBuffer : utility::NonCopyAble {
 
     //剩余buffer偏移量 = 总buffer的偏移量 - 当前buffer的偏移量
     int capacity() const {
-        return BufferSize - size_;
+        return buffer_size - size_;
     }
 
     //当前buffer偏移size个字节
@@ -98,9 +99,9 @@ class FixedBuffer : utility::NonCopyAble {
     }
 
  private:
-    int size_;
-    char buffer_[BufferSize];
+    char buffer_[buffer_size];
     char* current_buffer_;
+    int size_;
 };
 
 //输出流对象 重载输出流运算符<<  将值写入buffer中 

@@ -6,28 +6,29 @@
 
 namespace configure {
 //默认值
-static int thread_num = 8;
 static int port = 8888;
+static int thread_num = 8;
 static std::string log_file_name = "./web_server.log";
 static bool open_log = true;
 static bool log_to_stderr = false;
-static bool open_log_color = false;
+static bool color_log_to_stderr = false;
+static int min_log_level = INFO;
 
 static void ParseArg(int argc, char* argv[]) {
     int opt;
-    const char* str = "t:l:p:o:s:c:";
+    const char* str = "p:t:f:o:s:c:l:";
     while ((opt = getopt(argc, argv, str)) != -1) {
         switch (opt) {
+            case 'p': {
+                port = atoi(optarg);
+                break;
+            }
             case 't': {
                 thread_num = atoi(optarg);
                 break;
             }
-            case 'l': {
+            case 'f': {
                 log_file_name = optarg;
-                break;
-            }
-            case 'p': {
-                port = atoi(optarg);
                 break;
             }
             case 'o': {
@@ -39,7 +40,11 @@ static void ParseArg(int argc, char* argv[]) {
                 break;
             }
             case 'c': {
-                open_log_color = atoi(optarg);
+                color_log_to_stderr = atoi(optarg);
+                break;
+            }
+            case 'l': {
+                min_log_level = atoi(optarg);
                 break;
             }
             default: {
@@ -62,7 +67,9 @@ int main(int argc, char* argv[]) {
     //设置日志输出标准错误流
     log::Logging::set_log_to_stderr(configure::log_to_stderr);
     //设置日志输出颜色
-    log::Logging::set_open_log_color(configure::open_log_color);
+    log::Logging::set_color_log_to_stderr(configure::color_log_to_stderr);
+    //设置最小日志等级
+    log::Logging::set_min_log_level(configure::min_log_level);
 
     //主loop  初始化poller, 给event_fd注册到epoll中并注册其事件处理回调
     event::EventLoop main_loop;

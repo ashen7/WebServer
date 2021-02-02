@@ -4,11 +4,11 @@ server_port=8888
 url=http://${server_ip}:${server_port}/echo
 
 #子进程数量
-process_num=1
+process_num=1000
 #请求时间(单位s)
-request_time=20
+request_time=60
 #keep-alive
-is_keep_alive=1
+is_keep_alive=0
 
 #编译
 make clean && make -j8

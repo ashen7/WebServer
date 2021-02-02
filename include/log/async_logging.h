@@ -33,7 +33,7 @@ class FileUtils {
             size_t bytes = fwrite_unlocked(single_log + write_size, 1, remain_size, fp_);
             if (bytes == 0) {
                 if (ferror(fp_)) {
-                    fprintf(stderr, "FileUtils::append() failed !\n");
+                    perror("Write to log file failed");
                 }
                 break;
             }

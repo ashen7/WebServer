@@ -21,7 +21,7 @@ AsyncLogging::AsyncLogging(std::string file_name, int timeout)
     assert(file_name_.size() > 1);
     current_buffer_->bzero();
     next_buffer_->bzero();
-    buffers_.reserve(10);
+    buffers_.reserve(16);
 }
 
 AsyncLogging::~AsyncLogging() {
@@ -86,7 +86,7 @@ void AsyncLogging::Worker() {
     LogFile log_file(file_name_);
     
     std::vector<std::shared_ptr<Buffer>> buffers;
-    buffers.reserve(10);
+    buffers.reserve(16);
 
     while (is_running_) {
         assert(buffers.empty());
@@ -106,7 +106,7 @@ void AsyncLogging::Worker() {
         
         //遍历buffers 每个buffer数据写入log文件
         for (auto buffer : buffers) {
-            log_file.Write(buffer->buffer(), buffer->size());
+            //log_file.Write(buffer->buffer(), buffer->size());
         }
 
         //清理buffers 

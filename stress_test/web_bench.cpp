@@ -414,7 +414,7 @@ static void Worker(const char* server_host, const int server_port, const char* r
         while (client_sockfd == -1) {
             client_sockfd = ConnectServer(host, port);
         }
-        //cout << "1. 建立连接（TCP三次握手）, sockfd: " << client_sockfd << endl;
+        //cout << "1. 建立连接（TCP三次握手）成功!" << endl;
 keep_alive:
         while(true) {
             if (timeout) {
@@ -432,17 +432,17 @@ keep_alive:
 
             //向服务器发送请求报文
             if (request_size != write(client_sockfd, request, request_size)) {
+                cout << "2. 发送请求报文失败: " << strerror(errno) << endl;
                 failed_count++; 
                 close(client_sockfd);
                 //发送请求失败 要重新创建套接字
-                //cout << "2. 向服务器发送请求报文失败，重新建立连接" << endl;
                 client_sockfd = -1;
                 while (client_sockfd == -1) {
                     client_sockfd = ConnectServer(host, port);
                 }
                 continue;
             }
-            //cout << "2. 向服务器发送请求报文成功" << endl;
+            //cout << "2. 发送请求报文成功!" << endl;
 
             //没有设置force时 默认等到服务器的回复
             if (force == 0)  {
@@ -453,15 +453,14 @@ keep_alive:
                         break;
                     } 
                     int read_bytes = read(client_sockfd, response_buf, response_size);
-                    //cout << "3. 读服务器的响应报文" << endl;
                     if (read_bytes < 0) { 
-                        //cout << "4. 读取失败, sockfd: " << client_sockfd << endl;
+                        cout << "3. 接收响应报文失败: " << strerror(errno) << endl;
                         failed_count++;
                         close(client_sockfd);
                         //读取响应失败 不用重新创套接字 重新发一次请求即可
                         goto keep_alive;  
                     } else {
-                        //cout << "4. 成功读取" << read_bytes << "个字节, sockfd: " << client_sockfd << endl;
+                        //cout << "3. 接收响应报文成功！" << endl;
                         total_bytes += read_bytes;
                         break;
                     }
@@ -484,18 +483,20 @@ not_keep_alive:
             //与服务器建立连接
             client_sockfd = ConnectServer(host, port);                          
             if (client_sockfd < 0) { 
+                cout << "1. 建立连接失败: " << strerror(errno) << endl; 
                 failed_count++; 
                 continue;
             } 
-            //cout << "1. 建立连接（TCP三次握手）, sockfd: " << client_sockfd << endl;
+            //cout << "1. 建立连接（TCP三次握手）成功!" << endl;
 
             //向服务器发送请求报文
             if (request_size != write(client_sockfd, request, request_size)) {
+                cout << "2. 发送请求报文失败: " << strerror(errno) << endl;
                 failed_count++; 
                 close(client_sockfd);
                 continue;
             }
-            //cout << "2. 向服务器发送请求报文" << endl;
+            //cout << "2. 发送请求报文成功!" << endl;
 
             //http0.9特殊处理 
             if (http_version == 0) {
@@ -515,15 +516,14 @@ not_keep_alive:
                         break;
                     } 
                     int read_bytes = read(client_sockfd, response_buf, response_size);
-                    //cout << "3. 读服务器的响应报文" << endl;
                     if (read_bytes < 0) { 
-                        //cout << "4. 读取失败, sockfd: " << client_sockfd << endl;
+                        cout << "3. 接收响应报文失败: " << strerror(errno) << endl;
                         failed_count++;
                         close(client_sockfd);
                         //这里读失败想退出来继续创建套接字 去请求服务器,因为有两层循环 所以用goto
                         goto not_keep_alive;  
                     } else {
-                        //cout << "4. 成功读取" << read_bytes << "个字节, sockfd: " << client_sockfd << endl;
+                        //cout << "3. 接收响应报文成功！" << endl;
                         total_bytes += read_bytes;
                         break;
                     }
@@ -532,8 +532,8 @@ not_keep_alive:
             
             //一次发送 接收完成后 关闭套接字
             if (close(client_sockfd)) {
+                cout << "4. 关闭套接字失败: " << strerror(errno) << endl;
                 failed_count++;
-                //cout << "5. 关闭套接字失败" << endl;
                 continue;
             }
             success_count++;
@@ -607,15 +607,6 @@ static void StressTest() {
 		success_count = 0;
 		failed_count = 0;
 		total_bytes = 0;
-
-        //绑定闹钟信号的回调函数，时间一到 父进程就退出循环
-	    struct sigaction signal_action;
-	    signal_action.sa_handler = AlarmHandler;
-	    signal_action.sa_flags = 0;
-	    if (sigaction(SIGALRM, &signal_action, NULL)) {
-		    exit(1);
-	    }
-	    alarm(request_time + 5);
 
 		while (true) {
 			//从管道读端读取数据
