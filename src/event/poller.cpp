@@ -118,7 +118,7 @@ void Poller::EpollMod(std::shared_ptr<Channel> channel, int timeout) {
     }
 }
 
-// 从epoll中删除描述符
+// 从epoll中删除描述符 并删除其channel和http连接
 void Poller::EpollDel(std::shared_ptr<Channel> channel) {
     int fd = channel->fd();
     int events = channel->last_events();
@@ -144,7 +144,7 @@ void Poller::AddTimer(std::shared_ptr<Channel> channel, int timeout) {
     }
 }
 
-//处理超时
+//处理超时,超时就删除定时器(定时器析构会EpollDel注销fd)，然后释放http连接，close(fd)
 void Poller::HandleExpire() {
     timer_heap_.HandleExpireEvent();
 }

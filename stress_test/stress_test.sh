@@ -1,12 +1,12 @@
 #服务器地址
 server_ip=192.168.110.19
 server_port=8888
-url=http://${server_ip}:${server_port}/
+url=http://${server_ip}:${server_port}/echo
 
 #子进程数量
-process_num=10000
+process_num=1
 #请求时间(单位s)
-request_time=30
+request_time=10
 #keep-alive
 is_keep_alive=0
 

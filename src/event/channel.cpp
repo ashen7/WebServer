@@ -40,8 +40,7 @@ void Channel::HandleEvents() {
         HandleError();
         events_ = 0;
         return;
-    }
-    
+    } 
     //触发可读事件 | 高优先级可读 | 对端（客户端）关闭连接
     if (revents_ & (EPOLLIN | EPOLLPRI | EPOLLRDHUP)) {
         HandleRead();
@@ -50,7 +49,8 @@ void Channel::HandleEvents() {
     if (revents_ & EPOLLOUT) {
         HandleWrite();
     }
-    //最后都会处理更新监听事件(EpollMod)
+
+    //处理更新监听事件(EpollMod)
     HandleUpdate();
 }
 

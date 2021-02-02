@@ -31,7 +31,7 @@ AsyncLogging::~AsyncLogging() {
 }
 
 //将日志写入buffer输出缓冲区中
-void AsyncLogging::Write(const char* single_log, int size, bool is_fatal) {
+void AsyncLogging::WriteLog(const char* single_log, int size, bool is_fatal) {
     locker::LockGuard lock(mutex_);
     {
         //buffer没写满 就一直写

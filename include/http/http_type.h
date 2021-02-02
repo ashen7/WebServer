@@ -11,6 +11,9 @@
 #include "timer/timer.h"
 
 namespace http {
+//图标
+extern char web_server_favicon[555];
+
 //http mime文件类型
 class MimeType {
  public:
@@ -27,11 +30,9 @@ class MimeType {
     static pthread_once_t once_control;
 };
 
-extern char web_server_favicon[555];
-
 //处理状态
 enum ProcessState {
-    STATE_PARSE_URI,
+    STATE_PARSE_LINE,
     STATE_PARSE_HEADERS,
     STATE_RECV_BODY,
     STATE_RESPONSE,
@@ -39,10 +40,10 @@ enum ProcessState {
 };
 
 //解析uri（请求行）的状态
-enum UriState {
-    PARSE_URI_SUCCESS,
-    PARSE_URI_AGAIN,
-    PARSE_URI_ERROR,
+enum LineState {
+    PARSE_LINE_SUCCESS,
+    PARSE_LINE_AGAIN,
+    PARSE_LINE_ERROR,
 };
 
 //解析请求头的状态
@@ -87,8 +88,8 @@ enum RequestMethod {
 
 //Http版本
 enum HttpVersion { 
-    HTTP_10, 
-    HTTP_11 
+    HTTP_1_0, 
+    HTTP_1_1 
 };
 
 }  // namespace http

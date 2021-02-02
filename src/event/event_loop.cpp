@@ -71,7 +71,7 @@ void EventLoop::Loop() {
         is_event_handling_ = false;
         //执行正在等待的函数(fd注册到epoll内核事件表)
         PefrormPendingFunctions();
-        //处理超时事件 到期了就从定时器小根堆中删除
+        //处理超时事件 到期了就从定时器小根堆中删除(定时器析构会EpollDel掉fd)
         poller_->HandleExpire();
     }
 

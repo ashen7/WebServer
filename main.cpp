@@ -9,10 +9,13 @@ namespace configure {
 static int thread_num = 8;
 static int port = 8888;
 static std::string log_file_name = "./web_server.log";
+static bool open_log = true;
+static bool log_to_stderr = false;
+static bool open_log_color = false;
 
 static void ParseArg(int argc, char* argv[]) {
     int opt;
-    const char* str = "t:l:p:";
+    const char* str = "t:l:p:o:s:c:";
     while ((opt = getopt(argc, argv, str)) != -1) {
         switch (opt) {
             case 't': {
@@ -25,6 +28,18 @@ static void ParseArg(int argc, char* argv[]) {
             }
             case 'p': {
                 port = atoi(optarg);
+                break;
+            }
+            case 'o': {
+                open_log = atoi(optarg);
+                break;
+            }
+            case 's': {
+                log_to_stderr = atoi(optarg);
+                break;
+            }
+            case 'c': {
+                open_log_color = atoi(optarg);
                 break;
             }
             default: {
@@ -43,11 +58,11 @@ int main(int argc, char* argv[]) {
     //设置日志文件    
     log::Logging::set_log_file_name(configure::log_file_name);
     //开启日志
-    log::Logging::set_open_log(false);
+    log::Logging::set_open_log(configure::open_log);
     //设置日志输出标准错误流
-    log::Logging::set_log_to_stderr(true);
+    log::Logging::set_log_to_stderr(configure::log_to_stderr);
     //设置日志输出颜色
-    log::Logging::set_open_log_color(true);
+    log::Logging::set_open_log_color(configure::open_log_color);
 
     //主loop  初始化poller, 给event_fd注册到epoll中并注册其事件处理回调
     event::EventLoop main_loop;

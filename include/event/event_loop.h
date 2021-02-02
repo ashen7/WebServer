@@ -69,11 +69,11 @@ class EventLoop {
     void WakeUp();                     //异步唤醒SubLoop的epoll_wait(向event_fd中写入数据)
     void PefrormPendingFunctions();    //执行正在等待的函数(SubLoop注册EpollAdd连接套接字以及绑定事件的函数)
 
- private:
+ private:    
     std::shared_ptr<Poller> poller_;           //io多路复用 分发器
     int event_fd_;                             //用于异步唤醒SubLoop的Loop函数中的Poll(epoll_wait因为还没有注册fd会一直阻塞)
+    std::shared_ptr<Channel> wakeup_channel_;  //用于异步唤醒的channel
     pid_t thread_id_;                          //线程id
-    std::shared_ptr<Channel> wakeup_channel_;  //channel
 
     mutable locker::MutexLock mutex_;
     std::vector<Function> pending_functions_;  //正在等待处理的函数

@@ -100,7 +100,7 @@ class AsyncLogging : utility::NonCopyAble {
     AsyncLogging(const std::string file_name, int flush_interval = 2);
     ~AsyncLogging();
 
-    void Write(const char* single_log, int size, bool is_quit = false);   //将日志写入buffer输出缓冲区中
+    void WriteLog(const char* single_log, int size, bool is_quit = false);   //将日志写入buffer输出缓冲区中
     void Start();    //开始线程
     void Stop();     //停止线程
 

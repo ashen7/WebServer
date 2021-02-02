@@ -48,7 +48,7 @@ class Poller : utility::NonCopyAble {
  private:
     static constexpr int kMaxFdNum = 10000;      //最大fd数量
     static constexpr int kMaxEventsNum = 10000;  //最大事件数量
-    static constexpr int kEpollTimeOut = 10000;   //epoll wait的超时时间
+    static constexpr int kEpollTimeOut = 10000;  //epoll wait的超时时间
 
     int epoll_fd_;                                                       //epoll的文件描述符
     std::vector<epoll_event> ready_events_;                              //就绪事件

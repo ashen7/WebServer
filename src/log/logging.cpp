@@ -23,20 +23,16 @@ bool Logging::open_log_color_ = false;
 
 //初始化异步日志 并start线程
 void OnceInit() {
-    if (Logging::open_log()) {
-        async_logging = new AsyncLogging(Logging::log_file_name());
-        async_logging->Start();
-    }
+    async_logging = new AsyncLogging(Logging::log_file_name());
+    async_logging->Start();
 }
 
 //运行异步日志线程(只在第一次调用时运行,将buffer数据写入日志文件), 写日志到buffer中
-void Write(const char* single_log, int size, bool is_fatal) {
-    if (Logging::open_log()) {
-        //只会执行一次的函数
-        pthread_once(&once_control, OnceInit);
-        // 写日志到buffer中
-        async_logging->Write(single_log, size, is_fatal);
-    }
+void WriteLog(const char* single_log, int size, bool is_fatal) {
+    //只会执行一次的函数
+    pthread_once(&once_control, OnceInit);
+    // 写日志到buffer中
+    async_logging->WriteLog(single_log, size, is_fatal);
 }
 
 //logging
@@ -56,7 +52,7 @@ Logging::~Logging() {
 
     //写日志
     if (open_log_) {
-        Write(buffer.buffer(), buffer.size(), impl_.is_fatal_);
+        WriteLog(buffer.buffer(), buffer.size(), impl_.is_fatal_);
     }
     //日志输出到标准错误流
     if (log_to_stderr_) {

@@ -2,14 +2,14 @@
 
 #服务器绑定端口号
 port=8888               
-#是否打开日志
-open_log=0     
 #日志路径
 log_path=./server.log
-#日志输出到标准输出
-log_to_stdout=1
-#异步写入日志
-async_write_log=0
+#是否打开日志
+open_log=0     
+#日志输出到标准错误流
+log_to_stderr=1
+#输出日志颜色
+open_log_color=1
 #数据库连接池
 connection_num=8
 #线程池
@@ -29,4 +29,5 @@ rm -rf * && cmake .. && make -j8 && cp web_server ../
 cd ..
 
 ~/tools/flush_core.sh
-./web_server -p $port -t $thread_num -l $log_path 
+./web_server -p $port -t $thread_num -l $log_path \
+             -o $open_log -s $log_to_stderr -c $open_log_color
