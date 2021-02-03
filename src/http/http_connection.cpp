@@ -482,7 +482,8 @@ ResponseState HttpConnection::BuildResponse() {
             //响应体
             write_buffer_ = "HTTP/1.1 200 OK\r\n";
             write_buffer_ += "Content-Type: text/html\r\n\r\n";
-            write_buffer_ += "<html>Hello World</html>";
+            //write_buffer_ += "<html>Hello World</html>";
+            write_buffer_ += "Hello World";
             return RESPONSE_SUCCESS;
         }
 

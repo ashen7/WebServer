@@ -18,10 +18,10 @@ EventLoop::EventLoop()
       is_stop_(false), 
       is_event_handling_(false),
       is_calling_pending_functions_(false) {
-    //创建poller io复用 
-    poller_ = std::make_shared<Poller>();
     //这个eventloop是属于这个线程id的
     thread_id_ = current_thread::thread_id();
+    //创建poller io复用 
+    poller_ = std::make_shared<Poller>(thread_id_);
     //创建进程间通信event_fd,用于异步唤醒SubLoop的Loop函数中的Poll(epoll_wait因为还没有注册fd会一直阻塞)
     event_fd_ = CreateEventfd();
     //创建event_fd的channel 用于异步唤醒SubLoop

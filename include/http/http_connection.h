@@ -56,7 +56,7 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection> {
 
  private:
     static constexpr int kDefaultEvent = EPOLLIN | EPOLLET | EPOLLONESHOT; //默认事件
-    static constexpr int kDefaultTimeOut = 5 * 1000;                //默认超时时间 ms
+    static constexpr int kDefaultTimeOut = 2 * 1000;                //默认超时时间 ms
     static constexpr int kDefaultKeepAliveTime = 5 * 60 * 1000;     //默认长连接保持时间 ms
 
     int connect_fd_;                                    //连接套接字fd

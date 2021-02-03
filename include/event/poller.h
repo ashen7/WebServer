@@ -23,7 +23,7 @@ class Channel;
 class Poller : utility::NonCopyAble {
  public:
     //创建epoll内核事件表 给就绪事件，所有channel，以及对应http连接开辟内存空间
-    Poller();
+    explicit Poller(int thread_id_ = 0);
     ~Poller();
     
     //epoll_wait 等待就绪事件，然后处理就绪事件
@@ -46,8 +46,8 @@ class Poller : utility::NonCopyAble {
     }
 
  private:
-    static constexpr int kMaxFdNum = 10000;      //最大fd数量
-    static constexpr int kMaxEventsNum = 10000;  //最大事件数量
+    static constexpr int kMaxFdNum = 100000;      //最大fd数量
+    static constexpr int kMaxEventsNum = 4096;   //最大事件数量
     static constexpr int kEpollTimeOut = 10000;  //epoll wait的超时时间
 
     int epoll_fd_;                                                       //epoll的文件描述符
@@ -55,6 +55,9 @@ class Poller : utility::NonCopyAble {
     std::vector<std::shared_ptr<Channel>> ready_channels_;               //就绪fd的channel
     std::vector<std::shared_ptr<http::HttpConnection>> http_connections_;//http连接对象    
     timer::TimerHeap timer_heap_;                                        //定时器小顶堆
+
+    int thread_id_;
+    int connection_num_;
 };
 
 }  // namespace event

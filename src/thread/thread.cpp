@@ -17,6 +17,7 @@ __thread int tls_thread_id = 0;                     //线程id
 __thread char tls_thread_id_str[32];                //线程id字符串
 __thread int tls_thread_id_str_len = 6;             //线程id字符串长度
 __thread const char* tls_thread_name = "default";   //线程名字
+__thread int tls_connection_num = 0;                //连接数量
 
 //得到线程id
 pid_t get_tid() {

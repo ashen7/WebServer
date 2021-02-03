@@ -19,6 +19,7 @@ extern __thread int tls_thread_id;              //线程id
 extern __thread char tls_thread_id_str[32];     //线程id字符串
 extern __thread int tls_thread_id_str_len;      //线程id字符串长度
 extern __thread const char* tls_thread_name;    //线程名字
+extern __thread int tls_connection_num;         //连接数量
 
 void cache_thread_id();
 
@@ -41,6 +42,10 @@ inline int thread_id_str_len() {
 
 inline const char* thread_name() {
     return tls_thread_name;
+}
+
+inline int connection_num() {
+    return tls_connection_num;
 }
 
 }  // namespace thread_local_storage

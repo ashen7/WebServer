@@ -2,14 +2,19 @@ project(WebServer LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.5.1)
 
 set(DEBUG OFF)
+set(OPEN_LOGGING ON)
 
 #g++ 编译选项
 if (${DEBUG} STREQUAL "ON")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -O3 -g -Wfatal-errors -Wno-unused-parameter")
-    add_definitions(-DOPEN_LOGGING -DDEBUG)
+    add_definitions(-DDEBUG)
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -O3 -Wfatal-errors -Wno-unused-parameter")
     add_definitions(-DNDEBUG)
+endif()
+
+if (${OPEN_LOGGING} STREQUAL "ON")
+    add_definitions(-DOPEN_LOGGING)
 endif()
 
 #项目根目录
@@ -69,9 +74,14 @@ set_target_properties(event_static PROPERTIES OUTPUT_NAME "event")
 target_link_libraries(event_static ${LINK_LIBRARY})
 
 #生成可执行文件
-add_executable(web_server ${MAIN_SRC_FILE})
+#add_executable(web_server ${MAIN_SRC_FILE})
 #链接库
-target_link_libraries(web_server ${LINK_LIBRARY} event_shared)
+#target_link_libraries(web_server ${LINK_LIBRARY} event_shared)
+
+#生成可执行文件
+add_executable(web_server ${LIBEVENT_SOURCES} ${MAIN_SRC_FILE})
+#链接库
+target_link_libraries(web_server ${LINK_LIBRARY})
 
 #安装
 install(TARGETS event_shared event_static DESTINATION ${LIB_INSTALL_DIR})

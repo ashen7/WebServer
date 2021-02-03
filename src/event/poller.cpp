@@ -19,7 +19,9 @@
 namespace event {
 
 //创建epoll内核事件表 给就绪事件，就绪channel，以及对应http连接开辟内存空间
-Poller::Poller() {
+Poller::Poller(int thread_id)
+    : thread_id_(thread_id), 
+      connection_num_(0) {
     //创建epoll内核事件表
     epoll_fd_ = epoll_create1(EPOLL_CLOEXEC); 
     assert(epoll_fd_ > 0);
@@ -95,6 +97,7 @@ void Poller::EpollAdd(std::shared_ptr<Channel> channel, int timeout) {
         LOG(ERROR) << "Epoll add error, " << strerror(errno);
         ready_channels_[fd].reset();
     }
+    //LOG(WARNING) << "thread id: " << thread_id_ << ", connection num: " << ++connection_num_; 
 }
 
 // 修改描述符状态(如果传入的超时时间大于0 就给此fd绑定一个定时器)
@@ -131,6 +134,7 @@ void Poller::EpollDel(std::shared_ptr<Channel> channel) {
     }
     ready_channels_[fd].reset();
     http_connections_[fd].reset();
+    //LOG(WARNING) << "thread id: " << thread_id_ << ", connection num: " << --connection_num_; 
 }
 
 //添加定时器

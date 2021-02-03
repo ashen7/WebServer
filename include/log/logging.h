@@ -38,7 +38,7 @@ class Logging {
         color_log_to_stderr_ = color_log_to_stderr;
     }
 
-    static void set_min_log_level(bool min_log_level) {
+    static void set_min_log_level(int min_log_level) {
         min_log_level_ = min_log_level;
     }
 

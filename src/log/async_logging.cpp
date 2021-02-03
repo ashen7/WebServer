@@ -84,11 +84,16 @@ void AsyncLogging::Worker() {
     count_down_latch_.count_down();
     //log file
     LogFile log_file(file_name_);
-    
+    auto new_buffer1 = std::make_shared<Buffer>();
+    auto new_buffer2 = std::make_shared<Buffer>();
+    new_buffer1->bzero();
+    new_buffer2->bzero();
     std::vector<std::shared_ptr<Buffer>> buffers;
     buffers.reserve(16);
 
     while (is_running_) {
+        assert(new_buffer1 && new_buffer1.size() == 0);
+        assert(new_buffer2 && new_buffer2.size() == 0);
         assert(buffers.empty());
         {
             locker::LockGuard lock(mutex_);
@@ -99,14 +104,36 @@ void AsyncLogging::Worker() {
             //buffers再加上刚才写的buffer
             buffers_.push_back(current_buffer_);
             current_buffer_.reset();
+            current_buffer_ = std::move(new_buffer1);
             //将buffers move到本地来
             buffers.swap(buffers_);
+            if (!next_buffer_) {
+                next_buffer_ = std::move(new_buffer2);
+            }
         }
         assert(!buffers.empty());
         
+        if (buffers.size() > 25) {
+            buffers.erase(buffers.begin() + 2, buffers.end());
+        }
+
         //遍历buffers 每个buffer数据写入log文件
-        for (auto buffer : buffers) {
-            //log_file.Write(buffer->buffer(), buffer->size());
+        for (int i = 0; i < buffers.size(); ++i) {
+            log_file.Write(buffers[i]->buffer(), buffers[i]->size());
+        }
+
+        if (!new_buffer1) {
+            assert(!buffers.empty());
+            new_buffer1 = buffers.back();
+            buffers.pop_back();
+            new_buffer1->reset();
+        }
+
+        if (!new_buffer2) {
+            assert(!buffers.empty());
+            new_buffer2 = buffers.back();
+            buffers.pop_back();
+            new_buffer2->reset();
         }
 
         //清理buffers 
@@ -114,6 +141,7 @@ void AsyncLogging::Worker() {
         //flush日志文件
         log_file.Flush();
     }
+    log_file.Flush();
 }
 
 }  // namespace log
