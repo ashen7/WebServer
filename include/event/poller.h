@@ -52,8 +52,8 @@ class Poller : utility::NonCopyAble {
 
     int epoll_fd_;                                                       //epoll的文件描述符
     std::vector<epoll_event> ready_events_;                              //就绪事件
-    std::vector<std::shared_ptr<Channel>> ready_channels_;               //就绪fd的channel
-    std::vector<std::shared_ptr<http::HttpConnection>> http_connections_;//http连接对象    
+    std::shared_ptr<Channel> ready_channels_[kMaxFdNum];                 //就绪fd的channel
+    std::shared_ptr<http::HttpConnection> http_connections_[kMaxFdNum];  //http连接对象    
     timer::TimerHeap timer_heap_;                                        //定时器小顶堆
 
     int thread_id_;

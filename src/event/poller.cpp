@@ -25,10 +25,7 @@ Poller::Poller(int thread_id)
     //创建epoll内核事件表
     epoll_fd_ = epoll_create1(EPOLL_CLOEXEC); 
     assert(epoll_fd_ > 0);
-
     ready_events_.resize(kMaxEventsNum);
-    ready_channels_.resize(kMaxFdNum);
-    http_connections_.resize(kMaxFdNum);
 }
 
 Poller::~Poller() {

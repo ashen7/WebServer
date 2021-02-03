@@ -8,9 +8,9 @@ port=8888
 #日志路径
 log_file_name=./server.log
 #是否打开日志
-open_log=1  
+open_log=0 
 #日志也输出到标准错误流
-log_to_stderr=1
+log_to_stderr=0
 #输出日志颜色
 color_log_to_stderr=1
 #打印的最小日志等级
