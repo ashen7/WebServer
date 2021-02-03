@@ -80,9 +80,11 @@ int main(int argc, char* argv[]) {
     //主loop创建事件循环线程池(子loop),每个线程都run起来（调用SubLoop::Loop）
     //给监听套接字设置监听事件，绑定事件处理回调，注册到主loop的epoll内核事件表中
     server::WebServer::GetInstance()->Start();
+    std::cout << "================================================Start Web Server================================================" << std::endl;
     
     // 主loop开始事件循环  epoll_wait阻塞 等待就绪事件(主loop只注册了监听套接字的fd，所以只会处理新连接事件)
     main_loop.Loop();
+    std::cout << "================================================Stop Web Server================================================" << std::endl;
     
     return 0;
 }

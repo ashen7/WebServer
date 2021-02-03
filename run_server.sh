@@ -1,4 +1,6 @@
 #!/bin/bash
+build_dir=./build
+flush_core_cmd=~/tools/flush_core.sh
 
 #服务器绑定端口号
 port=8888               
@@ -24,16 +26,17 @@ thread_num=6
 #make clean && make -j8
 
 #cmake 判断文件夹是否存在
-if [ ! -d "./build" ]
+if [ ! -d $build_dir ]
 then
-    mkdir build
+    mkdir $build_dir 
 fi
 
-cd build
-rm -rf * && cmake .. && make -j8 && cp web_server ../ 
+cd $build_dir
+rm -rf * && cmake .. && make -j8 && make install 
 cd ..
+$flush_core_cmd
 
-~/tools/flush_core.sh
+export LD_LIBRARY_PATH=./lib:$LD_LIBRARY_PATH
 ./web_server -p $port -t $thread_num -f $log_file_name \
              -o $open_log -s $log_to_stderr \
              -c $color_log_to_stderr -l $min_log_level
