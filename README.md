@@ -1,7 +1,8 @@
 # A C++ High Performance Web Server
 
 ## Introduction  
-本项目是用C++11语法编写的Web服务器，支持HTTP GET、POST、Head请求方法，支持HTTP长连接与短连接，实现了4缓冲区异步日志，记录服务器运行状态。
+* 本项目是用C++11语法编写的Web服务器，支持HTTP GET、POST、Head请求方法，支持HTTP长连接与短连接，实现了4缓冲区异步日志，记录服务器运行状态。
+* 小根堆定时器，异步日志系统，互斥锁条件变量封装，HTTP连接，Reactor(Channel, Poller, EventLoop), WebServer(主接口)等链接成了libevent库，可供main调用
 
 ## Envoirment  
 * OS: Ubuntu 18.04
@@ -38,3 +39,4 @@
 * 对开源压测工具WebBench进行了代码的修改，写了一份c++11的版本
 * 修复了WebBench connect()失败时sockfd泄漏的bug，以及连续read二次阻塞的bug。
 * 支持HTTP1.1 Connection: keep-alive。
+* WebBench是本项目的submodule, 用git submodule init && git submodule update来添加
