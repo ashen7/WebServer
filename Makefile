@@ -6,12 +6,12 @@
 TARGET      := web_server
 STATIC_LIB  := libevent.a 
 SHARED_LIB  := libevent.so 
-EVENT_LIB	:= event
 
 CXX      	:= g++
 CXXFLAGS 	:= -std=gnu++11 -Wfatal-errors -Wno-unused-parameter
+LDFLAGS 	:= -Wl,-rpath=./lib 
 #LDFLAGS 	:= -Wl,-rpath=./lib -Wl,-Bstatic
-LDFLAGS 	:= -Wl,-rpath=./lib -Wl,-Bdynamic
+#LDFLAGS 	:= -Wl,-rpath=./lib -Wl,-Bdynamic
 INC_DIR  	:= -I ./include
 LIB_DIR  	:= -L ./
 LIBS     	:= -lpthread
@@ -29,7 +29,7 @@ ifeq ($(OPEN_LOGGING), 1)
 	CXXFLAGS += -DOPEN_LOGGING
 endif
 
-all: $(STATIC_LIB) $(SHARED_LIB) $(TARGET) 
+all: $(STATIC_LIB) $(TARGET) 
 
 #源文件
 SOURCES := $(wildcard src/utility/*.cpp \
@@ -39,36 +39,42 @@ SOURCES := $(wildcard src/utility/*.cpp \
                       src/http/*.cpp \
 					  src/event/*.cpp \
 					  src/server/*.cpp)
-#main文件
+#所有.c源文件结尾变为.o 放入变量OBJS
+OBJS := $(patsubst %.cpp, %.o, $(SOURCES))
+#main源文件
 MAIN := main.cpp
+MAIN_OBJ := main.o
+
+#编译
+%.o: %.cpp
+	@echo -e '\e[1;32mBuilding CXX object: $@\e[0m'
+	$(CXX) -c $^ -o $@ $(CXXFLAGS) $(INC_DIR)
 
 #链接生成静态库(这只是将源码归档到一个库文件中，什么flag都不加) @执行shell
-$(STATIC_LIB): $(SOURCES)
-	@echo '正在生成目标静态库: $@'
-	@echo 'gcc linker正在链接'
+$(STATIC_LIB): $(OBJS)
+	@echo -e '\e[1;36mLinking CXX static library: $@\e[0m'
 	ar -rcs -o $@ $^ 
-	@echo '完成链接目标: $@'
-	@echo ' '
+	@echo -e '\e[1;35mBuilt target: $@\e[0m'
 	
 #链接生成动态库
-$(SHARED_LIB): $(SOURCES)
-	@echo '正在生成目标动态库: $@'
-	@echo 'gcc linker正在链接'
-	$(CXX) -fPIC -shared -o $@ $^ $(CXXFLAGS) $(INC_DIR) $(LIB_DIR) $(LIBS)
-	@echo '完成链接目标: $@'
-	@echo ' '
+$(SHARED_LIB): $(OBJS)
+	@echo -e '\e[1;36mLinking CXX shared library: $@\e[0m'
+	$(CXX) -fPIC -shared -o $@ $^ $(LIB_DIR) $(LIBS)
+	@echo -e '\e[1;35mBuilt target: $@\e[0m'
 	
-$(TARGET): $(MAIN) $(SHARED_LIB) 
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) $(INC_DIR) $(LIB_DIR) $(LIBS) 
+#链接生成可执行文件
+$(TARGET): $(MAIN_OBJ) $(STATIC_LIB) 
+	@echo -e '\e[1;36mLinking CXX executable: $@\e[0m'
+	$(CXX) -o $@ $^ $(LDFLAGS) $(LIB_DIR) $(LIBS) 
+	@echo -e '\e[1;35mBuilt target: $@\e[0m'
 
 #声明这是伪目标文件
 .PHONY: all clean 
 
-install: $(STATIC_LIB) $(SHARED_LIB)
+install: $(STATIC_LIB) 
 	@if (test ! -d ./lib); then mkdir -p ./lib; fi
 	@mv libevent.a ./lib
-	@mv libevent.so ./lib
 
 clean:
-	rm -f $(TARGET) $(STATIC_LIB) $(SHARED_LIB)
+	rm -f $(OBJS) $(MAIN_OBJ) $(TARGET) $(STATIC_LIB) $(SHARED_LIB) ./lib/$(STATIC_LIB) ./lib/$(SHARED_LIB)
 

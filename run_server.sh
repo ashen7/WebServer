@@ -1,10 +1,11 @@
 #!/bin/bash
+#用makefile还是cmake
+use_make=0
 build_dir=./build
 flush_core_cmd=~/tools/flush_core.sh
 
 #服务器绑定端口号
 port=8888               
-
 #日志路径
 log_file_name=./server.log
 #是否打开日志
@@ -15,15 +16,10 @@ log_to_stderr=0
 color_log_to_stderr=1
 #打印的最小日志等级
 min_log_level=1
-
 #数据库连接池
 connection_num=6
-
 #线程池
 thread_num=6
-
-#Makefile
-#make clean && make -j8 && make install
 
 #cmake 判断文件夹是否存在
 if [ ! -d $build_dir ]
@@ -31,12 +27,19 @@ then
     mkdir $build_dir 
 fi
 
-cd $build_dir
-rm -rf * && cmake .. && make -j8 && make install 
-cd ..
+if [ $use_make -eq 1 ]
+then
+    #Makefile
+    make clean && make -j8 && make install
+else
+    cd $build_dir
+    rm -rf * && cmake .. && make -j8 && make install 
+    cd ..
+fi
+
 $flush_core_cmd
 rm -f $log_file_name
-
+#运行
 ./web_server -p $port -t $thread_num -f $log_file_name \
              -o $open_log -s $log_to_stderr \
              -c $color_log_to_stderr -l $min_log_level
