@@ -23,7 +23,7 @@ connection_num=6
 thread_num=6
 
 #Makefile
-#make clean && make -j8
+#make clean && make -j8 && make install
 
 #cmake 判断文件夹是否存在
 if [ ! -d $build_dir ]
@@ -37,7 +37,6 @@ cd ..
 $flush_core_cmd
 rm -f $log_file_name
 
-export LD_LIBRARY_PATH=./lib:$LD_LIBRARY_PATH
 ./web_server -p $port -t $thread_num -f $log_file_name \
              -o $open_log -s $log_to_stderr \
              -c $color_log_to_stderr -l $min_log_level
