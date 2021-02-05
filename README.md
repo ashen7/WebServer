@@ -9,14 +9,17 @@
 * Complier: g++ 7.5.0
 
 ## Build
-* 使用cmake
+* 使用cmake来build
     mkdir build 
     cd build
     cmake .. && make -j8 && make install
     cd ..
 
-* 使用Makefile
-    make -j8
+* 使用Makefile来build
+    make -j8 && make install
+
+* 也可以直接运行脚本
+    ./build.sh
 
 ## Usage
 	./web_server [-p port] [-t thread_numbers] [-l log_file_name]
