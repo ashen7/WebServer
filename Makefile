@@ -73,7 +73,7 @@ $(TARGET): $(MAIN_OBJ) $(STATIC_LIB)
 
 install: $(STATIC_LIB) 
 	@if (test ! -d ./lib); then mkdir -p ./lib; fi
-	@mv libevent.a ./lib
+	@mv $^ ./lib
 
 clean:
 	rm -f $(OBJS) $(MAIN_OBJ) $(TARGET) $(STATIC_LIB) $(SHARED_LIB) ./lib/$(STATIC_LIB) ./lib/$(SHARED_LIB)
