@@ -72,9 +72,13 @@ $(TARGET): $(MAIN_OBJ) $(STATIC_LIB)
 .PHONY: all clean 
 
 install: $(STATIC_LIB) 
-	@if (test ! -d ./lib); then mkdir -p ./lib; fi
+	@if (test ! -d lib); then mkdir -p lib; fi
 	@mv $^ ./lib
 
+install: $(TARGET) 
+	@if (test ! -d bin); then mkdir -p bin; fi
+	@mv $^ ./bin
+
 clean:
-	rm -f $(OBJS) $(MAIN_OBJ) $(TARGET) $(STATIC_LIB) $(SHARED_LIB) ./lib/$(STATIC_LIB) ./lib/$(SHARED_LIB)
+	rm -f $(OBJS) $(MAIN_OBJ) $(TARGET) $(STATIC_LIB) $(SHARED_LIB) ./bin/$(TARGET) ./lib/$(STATIC_LIB) ./lib/$(SHARED_LIB)
 

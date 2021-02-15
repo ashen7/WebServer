@@ -14,7 +14,7 @@ set(INC_DIR ${ROOT_DIR}/include)
 #库文件路径
 set(LIB_DIR /usr/lib/x86_64-linux-gnu)
 #可执行文件安装路径
-set(EXEC_INSTALL_DIR ${ROOT_DIR})
+set(EXEC_INSTALL_DIR ${ROOT_DIR}/bin)
 #库安装路径
 set(LIB_INSTALL_DIR ${ROOT_DIR}/lib)
 

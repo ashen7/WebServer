@@ -18,6 +18,6 @@ connection_num=6
 thread_num=6
 
 #运行
-./web_server -p $port -t $thread_num -f $log_file_name \
-             -o $open_log -s $log_to_stderr \
-             -c $color_log_to_stderr -l $min_log_level
+./bin/web_server -p $port -t $thread_num -f $log_file_name \
+                 -o $open_log -s $log_to_stderr \
+                 -c $color_log_to_stderr -l $min_log_level
