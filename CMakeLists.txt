@@ -55,17 +55,15 @@ message(${LIBEVENT_SOURCES})
 
 #头文件路径添加
 include_directories(${INC_DIR})
-
 #库文件路径添加
 link_directories(${LIB_DIR})
-
 #用到的库
 set(LINK_LIBRARY pthread) 
 
 #生成动态链接库
 add_library(event_shared SHARED ${LIBEVENT_SOURCES})
 #更改动态链接库输出名字
-set_target_properties(event_shared PROPERTIES OUTPUT_NAME "event")
+set_target_properties(event_shared PROPERTIES OUTPUT_NAME event)
 #设置动态链接库版本号
 set_target_properties(event_shared PROPERTIES VERSION 1.2 SOVERSION 1)
 #链接库
@@ -74,7 +72,7 @@ target_link_libraries(event_shared ${LINK_LIBRARY})
 #生成静态库
 add_library(event_static STATIC ${LIBEVENT_SOURCES})
 #更改静态库输出名字
-set_target_properties(event_static PROPERTIES OUTPUT_NAME "event")
+set_target_properties(event_static PROPERTIES OUTPUT_NAME event)
 #链接库
 target_link_libraries(event_static ${LINK_LIBRARY})
 
