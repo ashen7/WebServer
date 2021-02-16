@@ -39,7 +39,7 @@
 * 支持优雅关闭连接
  
 ## Stress Testing
-* 对开源压测工具WebBench进行了代码的修改，写了一份c++11的版本
-* 修复了WebBench connect()失败时sockfd泄漏的bug，以及连续read二次阻塞的bug。
-* 支持HTTP1.1 Connection: keep-alive。
+* 对开源压测工具WebBench进行了代码的修改，改成C++11语法的版本
+* 修复了WebBench connect()失败时sockfd泄漏的bug，以及接收响应报文时读完了依然read导致阻塞的bug。
+* 支持HTTP1.1长连接 Connection: keep-alive。
 * WebBench是本项目的submodule, 用git submodule init && git submodule update来添加
