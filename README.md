@@ -1,45 +1,35 @@
-# A C++ High Performance Web Server
+# 基于C++11主从Reactor模型+线程池的Web高性能服务器
 
-## Introduction  
-* 本项目是用C++11语法编写的Web服务器，支持HTTP GET、POST、Head请求方法，支持HTTP长连接与短连接，实现了4缓冲区异步日志，记录服务器运行状态。
-* 小根堆定时器，异步日志系统，互斥锁条件变量封装，HTTP连接，Reactor(Channel, Poller, EventLoop), WebServer(主接口)等链接成了libevent库，可供main调用
+## 简介
+* 本项目使用C++11标准编写了一个遵循One Loop Per Thread思想的Web高性能服务器，IO多路复用使用Epoll ET边沿触发工作模式，Socket使用非阻塞IO，网络使用主从Reactor模式+线程池。
+主线程也就是主Reactor(MainEventLoop)只负责accept客户端的请求，接收请求后将新连接以Round Robin轮循的方式平均的分发给线程池里的每个线程，
+每个线程里都有一个子Reactor(SubEventLoop)，子Reactor(SubEventLoop)负责与客户端进行交互，这里的线程是IO线程，没有创建计算线程，所以IO线程里兼顾计算。
+* 使用状态机解析HTTP请求，支持HTTP GET、POST、HEAD请求方法，支持HTTP长连接与短连接。
+* 使用小根堆做定时器，惰性删除超时的任务，即客户端没有向服务器发送请求的时间已经超过了我们给定的超时时间，当再次访问它的时候才会去关闭这个连接。
+* 实现了双缓冲区的异步日志系统，记录服务器运行状态。
+* 使用eventfd实现了线程的异步唤醒，
+* 使用智能指针等RAII机制，减少内存泄漏的可能。
 
-## Envoirment  
+## 环境 
 * OS: Ubuntu 18.04
 * Complier: g++ 7.5.0
+* CMake: 3.15.4
 
-## Build
+## 构建
 * 使用cmake来build
     mkdir build 
     cd build
     cmake .. && make -j8 && make install
     cd ..
-
 * 使用Makefile来build
     make -j8 && make install
-
 * 也可以直接运行脚本
     ./build.sh
 
-## Usage
-	./web_server [-p port] [-t thread_numbers] [-l log_file_name]
+## 运行
+	./web_server [-p port] [-t thread_numbers] [-f log_file_name] -o open_log -s log_to_stderr -c color_log_to_stderr -l min_log_level
 
-## Concurrency model
-并发模型为Reactor+非阻塞IO+线程池，新连接Round Robin分配
-
-## Technical points
-* 使用Epoll边沿触发的IO多路复用技术，非阻塞IO，使用Reactor模式
-* 使用多线程充分利用多核CPU，并使用线程池避免线程频繁创建销毁的开销
-* 使用基于小根堆的定时器关闭超时请求
-* 主线程只负责accept请求，并以Round Robin的方式分发给其它IO线程(该IO线程也兼计算线程)，锁的争用只会出现在主线程和某一特定线程中
-* 使用eventfd实现了线程的异步唤醒
-* 使用四个缓冲区实现了简单的异步日志系统
-* 为减少内存泄漏的可能，使用智能指针等RAII机制
-* 使用状态机解析了HTTP请求,支持管线化
-* 支持优雅关闭连接
- 
-## Stress Testing
-* 对开源压测工具WebBench进行了代码的修改，改成C++11语法的版本
-* 修复了WebBench connect()失败时sockfd泄漏的bug，以及接收响应报文时读完了依然read导致阻塞的bug。
-* 支持HTTP1.1长连接 Connection: keep-alive。
-* WebBench是本项目的submodule, 用git submodule init && git submodule update来添加
+## 压力测试
+* 本项目对开源压测工具WebBench进行了代码的修改，将其作为了子模块，用git submodule init && git submodule update来添加
+* 修复了WebBench connect()失败时sockfd泄漏的bug，以及接收响应报文时读完了依然read导致阻塞的bug(因为是BIO，读完了再读就会阻塞了)。
+* 添加支持HTTP1.1长连接 Connection: keep-alive。
