@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5.1)
 
 #开关
 set(DEBUG OFF)
-set(OPEN_LOGGING ON)
+set(OPEN_LOGGING OFF)
 
 #项目根目录
 set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR})
@@ -51,7 +51,7 @@ set(LIBEVENT_SOURCES ${UTILITY_SRC_FILE}
                      ${EVENT_SRC_FILE}
                      ${HTTP_SRC_FILE}
                      ${SERVER_SRC_FILE})
-message(${LIBEVENT_SOURCES})
+#message(${LIBEVENT_SOURCES})
 
 #头文件路径添加
 include_directories(${INC_DIR})
