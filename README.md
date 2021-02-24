@@ -30,6 +30,15 @@
 	./web_server [-p port] [-t thread_numbers] [-f log_file_name] -o open_log -s log_to_stderr -c color_log_to_stderr -l min_log_level
 
 ## 压力测试
-* 本项目对开源压测工具WebBench进行了代码的修改，将其作为了子模块，用git submodule init && git submodule update来添加
+* 本项目对开源压测工具WebBench进行了代码的修改，将其作为了子模块，用git submodule init && git submodule update来添加。修改后的源码[WebBench](https://github.com/ashen7/WebBench.git)
 * 修复了WebBench connect()失败时sockfd泄漏的bug，以及接收响应报文时读完了依然read导致阻塞的bug(因为是BIO，读完了再读就会阻塞了)。
 * 添加支持HTTP1.1长连接 Connection: keep-alive。
+
+## 压测结果
+HTTP长连接 QPS
+![长连接](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E9%95%BF%E8%BF%9E%E6%8E%A5QPS.png)
+HTTP短连接 QPS
+![短连接](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E7%9F%AD%E8%BF%9E%E6%8E%A5QPS.png)
+WebServer运行时状态
+![WebServer运行状态](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E8%BF%90%E8%A1%8C%E6%97%B6%E7%8A%B6%E6%80%81.png)
+
