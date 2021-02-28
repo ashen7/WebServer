@@ -14,21 +14,12 @@
 namespace current_thread {
 // TLS
 __thread int tls_thread_id = 0;                     //线程id
-__thread char tls_thread_id_str[32];                //线程id字符串
-__thread int tls_thread_id_str_len = 6;             //线程id字符串长度
 __thread const char* tls_thread_name = "default";   //线程名字
-__thread int tls_connection_num = 0;                //连接数量
 
-//得到线程id
-pid_t get_tid() {
-    return static_cast<pid_t>(::syscall(SYS_gettid));
-}
-
-//得到线程id syscall 并赋值线程id字符串, 线程id字符串长度
+//得到线程id syscall 
 void cache_thread_id() {
     if (tls_thread_id == 0) {
-        tls_thread_id = get_tid();
-        tls_thread_id_str_len = snprintf(tls_thread_id_str, sizeof(tls_thread_id_str), "%5d ", tls_thread_id);
+        tls_thread_id = static_cast<pid_t>(::syscall(SYS_gettid));
     }
 }
 
@@ -103,9 +94,9 @@ void Thread::Start() {
     assert(!is_started_);
     is_started_ = true;
 
-    auto thread_data = std::make_shared<ThreadData>(worker_, thread_name_, &thread_id_, &count_down_latch_);
+    ThreadData thread_data(worker_, thread_name_, &thread_id_, &count_down_latch_);
     //创建线程并执行线程函数
-    if (pthread_create(&pthread_id_, NULL, &Run, (void*)thread_data.get())) {
+    if (pthread_create(&pthread_id_, NULL, &Run, (void*)&thread_data)) {
         is_started_ = false;
     } else {
         //阻塞 等待count_down来唤醒

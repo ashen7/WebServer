@@ -16,8 +16,8 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop* main_loop, int thread_num)
     if (thread_num_ <= 0) {
         LOG(FATAL) << "thread num <= 0";
     }
-    sub_loop_thread_array_.reserve(thread_num_);
-    sub_loop_array_.reserve(thread_num_);
+    sub_loop_threads_.reserve(thread_num_);
+    sub_loops_.reserve(thread_num_);
 }
 
 EventLoopThreadPool::~EventLoopThreadPool() {
@@ -32,8 +32,8 @@ void EventLoopThreadPool::Start() {
     //创建event_loop_thread_pool,并将开始Loop事件循环的EventLoop对象存入array中
     for (int i = 0; i < thread_num_; ++i) {
         auto event_loop_thread = std::make_shared<EventLoopThread>();
-        sub_loop_thread_array_.push_back(event_loop_thread);
-        sub_loop_array_.push_back(event_loop_thread->StartLoop());
+        sub_loop_threads_.push_back(event_loop_thread);
+        sub_loops_.push_back(event_loop_thread->StartLoop());
     }
 }
 
@@ -45,8 +45,8 @@ EventLoop* EventLoopThreadPool::GetNextLoop() {
 
     // 如果此时还没有开始Loop的EventLoop对象 就返回主loop
     auto event_loop = main_loop_;
-    if (!sub_loop_array_.empty()) {
-        event_loop = sub_loop_array_[next_];
+    if (!sub_loops_.empty()) {
+        event_loop = sub_loops_[next_];
         next_ = (next_ + 1) % thread_num_;
     }
     

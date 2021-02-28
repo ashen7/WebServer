@@ -92,8 +92,8 @@ void AsyncLogging::Worker() {
     buffers.reserve(16);
 
     while (is_running_) {
-        assert(new_buffer1 && new_buffer1.size() == 0);
-        assert(new_buffer2 && new_buffer2.size() == 0);
+        assert(new_buffer1 && new_buffer1->size() == 0);
+        assert(new_buffer2 && new_buffer2->size() == 0);
         assert(buffers.empty());
         {
             locker::LockGuard lock(mutex_);
