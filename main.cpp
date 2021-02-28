@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     //设置最小日志等级
     log::Logging::set_min_log_level(configure::min_log_level);
 
-    //主loop  初始化poller, 给event_fd注册到epoll中并注册其事件处理回调
+    //主loop  初始化poller, 把eventfd注册到epoll中并注册其事件处理回调
     event::EventLoop main_loop;
 
     //创建监听套接字绑定服务器，监听端口，设置监听套接字为NIO，屏蔽管道信号
@@ -80,9 +80,9 @@ int main(int argc, char* argv[]) {
     //主loop创建事件循环线程池(子loop),每个线程都run起来（调用SubLoop::Loop）
     //给监听套接字设置监听事件，绑定事件处理回调，注册到主loop的epoll内核事件表中
     server::WebServer::GetInstance()->Start();
-    std::cout << "================================================Start Web Server================================================" << std::endl;
-    
+
     // 主loop开始事件循环  epoll_wait阻塞 等待就绪事件(主loop只注册了监听套接字的fd，所以只会处理新连接事件)
+    std::cout << "================================================Start Web Server================================================" << std::endl;
     main_loop.Loop();
     std::cout << "================================================Stop Web Server================================================" << std::endl;
     

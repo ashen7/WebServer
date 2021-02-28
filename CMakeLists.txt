@@ -2,8 +2,8 @@ project(WebServer LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.5.1)
 
 #开关
-set(DEBUG OFF)
-set(OPEN_LOGGING OFF)
+set(DEBUG ON)
+set(OPEN_LOGGING ON)
 
 #项目根目录
 set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR})
@@ -24,7 +24,7 @@ set(LIB_INSTALL_DIR ${ROOT_DIR}/lib)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wfatal-errors -Wno-unused-parameter -Wl,-rpath=${LIB_INSTALL_DIR}")
 if (${DEBUG} STREQUAL "ON")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-    add_definitions(-DDEBUG)
+    #add_definitions(-DDEBUG)
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
     add_definitions(-DNDEBUG)
