@@ -67,7 +67,7 @@ class EventLoop {
     void HandleRead();                 //eventfd的读回调函数(因为event_fd写了数据，所以触发可读事件，从event_fd读数据)
     void HandleUpdate();               //eventfd的更新事件回调函数(更新监听事件)
     void WakeUp();                     //异步唤醒SubLoop的epoll_wait(向event_fd中写入数据)
-    void PefrormPendingFunctions();    //执行正在等待的函数(SubLoop注册EpollAdd连接套接字以及绑定事件的函数)
+    void PerformPendingFunctions();    //执行正在等待的函数(SubLoop注册EpollAdd连接套接字以及绑定事件的函数)
 
  private:    
     std::shared_ptr<Poller> poller_;           //io多路复用 分发器

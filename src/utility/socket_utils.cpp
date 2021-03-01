@@ -120,6 +120,7 @@ int Read(int fd, void* read_buffer, int size) {
     int read_sum_bytes = 0;
     char* buffer = (char*)read_buffer;
 
+    //epoll ET模式 直到读到EAGAIN为止
     while (size > 0) {
         if ((read_bytes = read(fd, buffer, size)) < 0) {
             //EINTR是中断引起的 所以重新读就行
@@ -148,6 +149,7 @@ int Read(int fd, std::string& read_buffer, bool& is_read_zero_bytes) {
     int read_bytes = 0;
     int read_sum_bytes = 0;
 
+    //epoll ET模式 直到读到EAGAIN为止
     while (true) {
         //每次都读到这个buffer里去
         char buffer[MAX_BUFFER_SIZE];
@@ -179,6 +181,7 @@ int Read(int fd, std::string& read_buffer) {
     int read_bytes = 0;
     int read_sum_bytes = 0;
 
+    //epoll ET模式 直到读到EAGAIN为止
     while (true) {
         char buffer[MAX_BUFFER_SIZE];
         if ((read_bytes = read(fd, buffer, MAX_BUFFER_SIZE)) < 0) {
@@ -209,6 +212,7 @@ int Write(int fd, void* write_buffer, int size) {
     int write_sum_bytes = 0;
     char* buffer = (char*)write_buffer;
 
+    //epoll ET模式 直到写到EAGAIN为止
     while (size > 0) {
         if ((write_bytes = write(fd, buffer, size)) <= 0) {
             if (write_bytes < 0) {
@@ -240,6 +244,7 @@ int Write(int fd, std::string& write_buffer) {
     int write_sum_bytes = 0;
     const char* buffer = write_buffer.c_str();
 
+    //epoll ET模式 直到写到EAGAIN为止
     while (size > 0) {
         if ((write_bytes = write(fd, buffer, size)) <= 0) {
             //EINTR是中断引起的 所以重新写就行

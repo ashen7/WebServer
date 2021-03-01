@@ -2,12 +2,14 @@
 #define THREAD_THREAD_H_
 
 #include <pthread.h>
-#include <sys/syscall.h>
 #include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/prctl.h>
 
-#include <functional>
-#include <memory>
 #include <string>
+#include <memory>
+#include <functional>
 
 #include "locker/mutex_lock.h"
 #include "utility/count_down_latch.h"
@@ -18,12 +20,10 @@ namespace current_thread {
 extern __thread int tls_thread_id;              //线程id
 extern __thread const char* tls_thread_name;    //线程名字
 
-extern void cache_thread_id();
-
-//得到线程id syscall 并赋值线程id字符串, 线程id字符串长度
+//得到线程id syscall 
 inline int thread_id() {
     if (__builtin_expect(tls_thread_id == 0, 0)) {
-        cache_thread_id();
+        tls_thread_id = static_cast<pid_t>(::syscall(SYS_gettid));
     }
 
     return tls_thread_id;
@@ -61,14 +61,14 @@ class Thread : utility::NonCopyAble {
     }
 
  private:
-    static void* Run(void* thread_obj);
+    static void* Run(void* arg);
+    void Run();
 
  private:
     Worker worker_;             //线程函数
     pthread_t pthread_id_;      //创建线程的id
     pid_t thread_id_;           //线程id
     std::string thread_name_;   //线程名字
-    utility::CountDownLatch count_down_latch_;   //倒计时
 
     bool is_started_;    //线程是否已经开始
     bool is_joined_;     //线程是否已经join

@@ -3,7 +3,6 @@
 #用makefile还是cmake
 use_make=0
 build_dir=./build
-flush_core_cmd=~/tools/flush_core.sh
 
 if [ $use_make -eq 1 ]
 then
@@ -24,5 +23,5 @@ else
     cd ..
 fi
 
-$flush_core_cmd
+flush_core
 rm -f $log_file_name

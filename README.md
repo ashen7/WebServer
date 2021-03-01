@@ -2,7 +2,7 @@
 
 ## 简介
 * 本项目使用C++11标准编写了一个遵循One Loop Per Thread思想的Web高性能服务器。
-* 并发模型使用主从Reactor模式+线程池，Socket使用非阻塞IO，IO多路复用使用Epoll ET边沿触发工作模式。
+* 并发模型使用主从Reactor模式+线程池，Socket使用非阻塞IO，IO多路复用使用Epoll ET边缘触发工作模式。
 * 主线程也就是主Reactor(MainEventLoop)只负责accept客户端的请求，接收请求后将新连接以Round Robin轮转的方式平均的分发给线程池里的每个线程，
   每个线程里都有一个子Reactor(SubEventLoop)，子Reactor(SubEventLoop)负责与客户端进行交互，这里的线程是IO线程，没有创建计算线程，所以IO线程里兼顾计算。
 * 使用状态机解析HTTP请求，支持HTTP GET、POST、HEAD请求方法，支持HTTP长连接与短连接。
@@ -140,16 +140,16 @@ HTTP短连接 QPS：2万8
     thread_pool.h/thread_pool.cpp: [thread::ThreadPool类], 
         实现阻塞队列 + 线程池。
 
-* include/locker: 封装互斥锁RAII机制
+* include/utility和src/utility: 封装Socket操作
     
-    mutex_lock.h: [locker::MutexLock类], [locker::LockGuard类], [locker::ConditionVariable类], 
-        对互斥锁和条件变量进行了封装，并提供了RAII机制的访问(互斥锁析构时先要加锁，再释放锁)。
-
-* include/utility: 封装Socket操作
-    
-    socket_utils.h: 
-        套接字设置非阻塞，套接字关闭TCP Nagle算法，优雅关闭套接字，封装Read，Write等。
+    socket_utils.h/socket_utils.cpp: 
+        套接字设置非阻塞，套接字关闭TCP Nagle算法，优雅关闭套接字，封装Epoll ET模式下的Read，Write等。
 
     noncopyable.h:
         将拷贝构造函数和赋值运算符重载给设置为private或者C++11语法使用delete。
         子类继承这个类，这个子类就不能使用拷贝构造函数或赋值运算符了。
+
+* include/locker: 封装互斥锁RAII机制
+    
+    mutex_lock.h: [locker::MutexLock类], [locker::LockGuard类], [locker::ConditionVariable类], 
+        对互斥锁和条件变量进行了封装，并提供了RAII机制的访问(互斥锁析构时先要加锁，再释放锁)。

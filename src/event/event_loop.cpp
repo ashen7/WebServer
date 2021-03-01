@@ -29,7 +29,7 @@ EventLoop::EventLoop()
 
     //如果本线程已经拥有一个EventLoop 就不能再拥有了
     if (tls_event_loop) {
-        // LOG << "Another EventLoop " << tls_event_loop << " exists in this thread " << thread_id_;
+        LOG(WARNING) << "Another EventLoop " << tls_event_loop << " exists in this thread " << thread_id_;
     } else {
         tls_event_loop = this;
     }
@@ -70,7 +70,7 @@ void EventLoop::Loop() {
 
         is_event_handling_ = false;
         //执行正在等待的函数(fd注册到epoll内核事件表)
-        PefrormPendingFunctions();
+        PerformPendingFunctions();
         //处理超时事件 到期了就从定时器小根堆中删除(定时器析构会EpollDel掉fd)
         poller_->HandleExpire();
     }
@@ -87,7 +87,7 @@ void EventLoop::StopLoop() {
 }
 
 //执行正在等待的函数(这里的func是SubLoop注册EpollAdd连接套接字以及绑定事件的函数)
-void EventLoop::PefrormPendingFunctions() {
+void EventLoop::PerformPendingFunctions() {
     std::vector<Function> functions;
     is_calling_pending_functions_ = true;
 
