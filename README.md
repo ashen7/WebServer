@@ -13,7 +13,7 @@
 但此时没有就绪事件Loop阻塞在epoll_wait中，主线程向eventfd中写入数据，此时Loop的epoll_wait因有可读事件就绪而被唤醒，去添加新连接。
 
 ## 并发模型
-![并发模型](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E9%95%BF%E8%BF%9E%E6%8E%A5QPS.png)
+![并发模型](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B.png)
 
 ## 环境 
 * OS: Ubuntu 18.04
