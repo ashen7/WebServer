@@ -102,7 +102,7 @@ HTTP短连接 QPS：2万8
     
     http_connection.h/http_connection.cpp: [http::HttpConnection类], 
         读取客户端发来的请求数据存到read_buffer_(read)。
-        解析请求行，解析请求头，解析请求体(POST方法), 构建响应报文，将响应报文写入write_buffer_(将请求的文件内容通过mmap映射到一块共享内存中，加快访问速度)。
+        解析请求行，解析请求头，解析请求体(POST方法), 构建响应报文，将响应报文写入write_buffer_(将请求的文件内容通过mmap映射到一块共享内存中，用户态和内核态内存零拷贝，加快访问速度)。
         将write_buffer_中的响应报文数据发送给客户端(write)。
 
     http_type.h/http_type.cpp: [http::HttpType类], 
