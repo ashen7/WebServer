@@ -2,7 +2,7 @@
 
 ## 简介
 * 本项目使用C++11标准编写了一个遵循One Loop Per Thread思想的Web高性能服务器。
-* 网络使用主从Reactor模式+线程池，Socket使用非阻塞IO，IO多路复用使用Epoll ET边沿触发工作模式。
+* 并发模型使用主从Reactor模式+线程池，Socket使用非阻塞IO，IO多路复用使用Epoll ET边沿触发工作模式。
 * 主线程也就是主Reactor(MainEventLoop)只负责accept客户端的请求，接收请求后将新连接以Round Robin轮转的方式平均的分发给线程池里的每个线程，
   每个线程里都有一个子Reactor(SubEventLoop)，子Reactor(SubEventLoop)负责与客户端进行交互，这里的线程是IO线程，没有创建计算线程，所以IO线程里兼顾计算。
 * 使用状态机解析HTTP请求，支持HTTP GET、POST、HEAD请求方法，支持HTTP长连接与短连接。
