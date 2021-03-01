@@ -2,7 +2,8 @@ project(WebServer LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.5.1)
 
 #开关
-set(DEBUG ON)
+set(DEBUG OFF)
+set(CHECK_MEMORY OFF)
 set(OPEN_LOGGING ON)
 
 #项目根目录
@@ -28,6 +29,10 @@ if (${DEBUG} STREQUAL "ON")
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
     add_definitions(-DNDEBUG)
+endif()
+
+if (${CHECK_MEMORY} STREQUAL "ON")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
 endif()
 
 if (${OPEN_LOGGING} STREQUAL "ON")
