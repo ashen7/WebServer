@@ -12,6 +12,9 @@
 * 使用eventfd实现了线程的异步唤醒，每个EventLoop将eventfd注册到epoll内核表中，当新事件被accept后分发到某个SubEventLoop，
 但此时没有就绪事件Loop阻塞在epoll_wait中，主线程向eventfd中写入数据，此时Loop的epoll_wait因有可读事件就绪而被唤醒，去添加新连接。
 
+## 并发模型
+![并发模型](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E9%95%BF%E8%BF%9E%E6%8E%A5QPS.png)
+
 ## 环境 
 * OS: Ubuntu 18.04
 * Complier: g++ 7.5.0
