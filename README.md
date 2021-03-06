@@ -4,7 +4,7 @@
 * 本项目使用C++11标准编写了一个遵循One Loop Per Thread思想的Web高性能服务器。
 * 并发模型使用主从Reactor模式+线程池，Socket使用非阻塞IO，IO多路复用使用Epoll ET边缘触发工作模式。
 * 主线程也就是主Reactor(MainEventLoop)只负责accept客户端的请求，接收请求后将新连接以Round Robin轮转的方式平均的分发给线程池里的每个线程，
-  每个线程里都有一个子Reactor(SubEventLoop)，子Reactor(SubEventLoop)负责与客户端进行交互，这里的线程是IO线程，没有创建计算线程，所以IO线程里兼顾计算。
+  每个线程里都有一个子Reactor(SubEventLoop)，子Reactor(SubEventLoop)负责与客户端进行交互，这里的线程是IO线程，没有创建工作线程，所以IO线程里兼顾计算。
 * 使用状态机解析HTTP请求，支持HTTP GET、POST、HEAD请求方法，支持HTTP长连接与短连接。
 * 使用小根堆做定时器，惰性删除超时的任务，即客户端没有向服务器发送请求的时间已经超过了我们给定的超时时间，当再次访问它的时候才会去关闭这个连接。
 * 实现了双缓冲区的异步日志系统，记录服务器运行状态。
@@ -64,12 +64,6 @@
 
 HTTP长连接 QPS: 26万
 ![长连接](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E9%95%BF%E8%BF%9E%E6%8E%A5QPS.png)
-
-HTTP短连接 QPS：2万8
-![短连接](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E7%9F%AD%E8%BF%9E%E6%8E%A5QPS.png)
-
-压力测试HTTP短连接时 WebServer的状态
-![WebServer运行状态](https://github.com/ashen7/WebServer/blob/master/resource/WebServer%E8%BF%90%E8%A1%8C%E6%97%B6%E7%8A%B6%E6%80%81.png)
 
 ## 代码结构
 * include/server和src/server: WebServer主接口
@@ -140,8 +134,11 @@ HTTP短连接 QPS：2万8
     thread.h/thread.cpp: [thread::Thread类], 
         用到了TLS线程局部存储，每个线程一个线程id。
 
-    thread_pool.h/thread_pool.cpp: [thread::ThreadPool类], 
-        实现阻塞队列 + 线程池。
+    worker_thread_pool.h/worker_thread_pool.cpp: [thread::WorkerThreadPool类], 
+        工作线程池。
+    
+    block_queue.hpp: [thread::BlockThread<T>类], 
+        阻塞队列模板类
 
 * include/utility和src/utility: 封装Socket操作
     
